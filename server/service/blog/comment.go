@@ -1,6 +1,8 @@
 package blog
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
@@ -11,7 +13,11 @@ import (
 
 type CommentService struct{}
 
-func (s *CommentService) GetPublicList(info blogReq.CommentSearch) (result map[string]interface{}, err error) {
+func (s *CommentService) GetPublicList(info blogReq.CommentSearch, rawToken string) (result map[string]interface{}, err error) {
+	access, err := s.checkCommentAccess(info.Page, info.BlogID, rawToken)
+	if err != nil {
+		return nil, err
+	}
 	db := global.GVA_DB.Model(&blogModel.Comment{}).Where("page = ?", info.Page)
 	if info.BlogID != nil {
 		db = db.Where("blog_id = ?", *info.BlogID)
@@ -22,8 +28,9 @@ func (s *CommentService) GetPublicList(info blogReq.CommentSearch) (result map[s
 		return nil, err
 	}
 
+	publishedDB := db.Where("is_published = ?", true)
 	var openCount int64
-	if err = db.Where("is_published = ?", true).Count(&openCount).Error; err != nil {
+	if err = publishedDB.Count(&openCount).Error; err != nil {
 		return nil, err
 	}
 
@@ -35,7 +42,13 @@ func (s *CommentService) GetPublicList(info blogReq.CommentSearch) (result map[s
 	}
 	offset := info.PageSize * (info.PageNum - 1)
 	var list []blogModel.Comment
-	if err = db.Order("create_time desc").Limit(info.PageSize).Offset(offset).Find(&list).Error; err != nil {
+	listDB := publishedDB
+	resultTotal := openCount
+	if access.IsAdmin {
+		listDB = db
+		resultTotal = allCount
+	}
+	if err = listDB.Order("create_time desc").Limit(info.PageSize).Offset(offset).Find(&list).Error; err != nil {
 		return nil, err
 	}
 
@@ -46,14 +59,22 @@ func (s *CommentService) GetPublicList(info blogReq.CommentSearch) (result map[s
 			"list":     list,
 			"page":     info.PageNum,
 			"pageSize": info.PageSize,
-			"total":    allCount,
+			"total":    resultTotal,
 		},
 	}
 	return
 }
 
 func (s *CommentService) Create(info blogReq.CommentCreate) error {
+	access, err := s.checkCommentAccess(info.Page, info.BlogID, info.AccessToken)
+	if err != nil {
+		return err
+	}
+	s.applyCommentDefaults(&info, access)
 	now := time.Now()
+	if !info.IsPublished {
+		info.IsPublished = true
+	}
 	entity := blogModel.Comment{
 		Nickname:        info.Nickname,
 		Email:           info.Email,
@@ -71,6 +92,71 @@ func (s *CommentService) Create(info blogReq.CommentCreate) error {
 		QQ:              info.QQ,
 	}
 	return global.GVA_DB.Create(&entity).Error
+}
+
+func (s *CommentService) checkCommentAccess(page int, blogID *uint, rawToken string) (blogAccessContext, error) {
+	switch page {
+	case 1:
+		var row blogModel.About
+		if err := global.GVA_DB.Where("name_en = ?", "commentEnabled").First(&row).Error; err == nil {
+			if strings.EqualFold(row.Value, "false") || row.Value == "0" {
+				return blogAccessContext{}, errors.New("comment closed")
+			}
+		}
+		return parseCommentAccess(rawToken)
+	case 2:
+		var row blogModel.SiteSetting
+		if err := global.GVA_DB.Where("name_en = ?", "friendCommentEnabled").First(&row).Error; err == nil && row.Value != nil {
+			if *row.Value == "0" || strings.EqualFold(*row.Value, "false") {
+				return blogAccessContext{}, errors.New("comment closed")
+			}
+		}
+		return parseCommentAccess(rawToken)
+	default:
+		if blogID == nil {
+			return parseCommentAccess(rawToken)
+		}
+		var blog blogModel.Blog
+		if err := global.GVA_DB.First(&blog, *blogID).Error; err != nil {
+			return blogAccessContext{}, err
+		}
+		if !blog.IsCommentEnabled {
+			return blogAccessContext{}, errors.New("comment closed")
+		}
+		return ensureBlogReadable(blog, rawToken)
+	}
+}
+
+func (s *CommentService) applyCommentDefaults(info *blogReq.CommentCreate, access blogAccessContext) {
+	info.Nickname = strings.TrimSpace(info.Nickname)
+	info.Email = strings.TrimSpace(info.Email)
+	info.Avatar = strings.TrimSpace(info.Avatar)
+	if access.IsAdmin {
+		info.IsAdminComment = true
+		info.IsPublished = true
+		if user, err := loadBlogAdminUser(access.Username); err == nil {
+			if info.Nickname == "" {
+				info.Nickname = user.NickName
+			}
+			if info.Email == "" {
+				info.Email = user.Email
+			}
+			if info.Avatar == "" {
+				info.Avatar = user.HeaderImg
+			}
+		}
+	}
+	if info.Nickname == "" {
+		info.Nickname = "Visitor"
+	}
+}
+
+func parseCommentAccess(rawToken string) (blogAccessContext, error) {
+	access, err := parseBlogAccessToken(rawToken)
+	if err != nil {
+		return blogAccessContext{}, nil
+	}
+	return access, nil
 }
 
 func (s *CommentService) GetAdminList(info blogReq.CommentAdminSearch) (list []blogModel.Comment, total int64, err error) {

@@ -20,6 +20,7 @@ type ApiGroup struct {
 	LoginLogApi     LoginLogApi
 	OperationLogApi OperationLogApi
 	TelegramApi     TelegramApi
+	AuthApi         AuthApi
 }
 
 var (
@@ -40,4 +41,5 @@ var (
 	loginLogService     = service.ServiceGroupApp.BlogServiceGroup.LoginLogService
 	operationLogService = service.ServiceGroupApp.BlogServiceGroup.OperationLogService
 	telegramService     = service.ServiceGroupApp.BlogServiceGroup.TelegramService
+	authService         = service.ServiceGroupApp.BlogServiceGroup.AuthService
 )

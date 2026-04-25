@@ -39,14 +39,19 @@ func OperationRecord() gin.HandlerFunc {
 
 		c.Next()
 
-		ip := c.ClientIP()
+		ip := utils.BlogClientIP(c.Request)
+		ipSource := utils.BlogIPSource(ip)
 		ua := c.Request.UserAgent()
+		os, browser := utils.BlogParseUserAgent(ua)
 		record := blogModel.OperationLog{
 			Username:    username,
 			URI:         c.Request.URL.Path,
 			Method:      c.Request.Method,
 			Param:       strPtr(limitString(string(body), 2000)),
 			IP:          &ip,
+			IPSource:    &ipSource,
+			OS:          &os,
+			Browser:     &browser,
 			CreateTime:  time.Now(),
 			UserAgent:   &ua,
 			Times:       int(time.Since(start).Milliseconds()),

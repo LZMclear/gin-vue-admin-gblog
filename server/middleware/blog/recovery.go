@@ -8,6 +8,7 @@ import (
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,8 +17,10 @@ func Recovery() gin.HandlerFunc {
 		defer func() {
 			if err := recover(); err != nil {
 				req, _ := httputil.DumpRequest(c.Request, false)
-				ip := c.ClientIP()
+				ip := utils.BlogClientIP(c.Request)
+				ipSource := utils.BlogIPSource(ip)
 				ua := c.Request.UserAgent()
+				os, browser := utils.BlogParseUserAgent(ua)
 				desc := "blog panic"
 				errMsg := fmt.Sprintf("panic: %v\nrequest: %s\nstack: %s", err, string(req), string(debug.Stack()))
 				_ = global.GVA_DB.Create(&blogModel.ExceptionLog{
@@ -27,6 +30,9 @@ func Recovery() gin.HandlerFunc {
 					Description: &desc,
 					Error:       &errMsg,
 					IP:          &ip,
+					IPSource:    &ipSource,
+					OS:          &os,
+					Browser:     &browser,
 					CreateTime:  time.Now(),
 					UserAgent:   &ua,
 				}).Error

@@ -36,7 +36,7 @@ func (a *ArticleApi) GetArticle(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	data, err := articleService.GetPublishedByID(req.ID)
+	data, err := articleService.GetPublishedByIDWithToken(req.ID, c.GetHeader("Authorization"))
 	if err != nil {
 		global.GVA_LOG.Error("get article failed", zap.Error(err))
 		response.FailWithMessage("获取文章失败", c)

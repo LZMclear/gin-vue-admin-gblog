@@ -28,6 +28,7 @@ type CommentCreate struct {
 	ParentCommentID int64   `json:"parentCommentId"`
 	Website         *string `json:"website"`
 	QQ              *string `json:"qq"`
+	AccessToken     string  `json:"-"`
 }
 
 type CommentUpdate struct {

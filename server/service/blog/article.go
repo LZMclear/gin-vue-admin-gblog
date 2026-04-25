@@ -7,6 +7,7 @@ import (
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
+	"gorm.io/gorm"
 )
 
 type ArticleService struct{}
@@ -32,6 +33,20 @@ func (s *ArticleService) GetPublishedList(info blogReq.ArticleSearch) (list []bl
 func (s *ArticleService) GetPublishedByID(id uint) (blog blogModel.Blog, err error) {
 	err = global.GVA_DB.Where("id = ? AND is_published = ?", id, true).First(&blog).Error
 	return
+}
+
+func (s *ArticleService) GetPublishedByIDWithToken(id uint, rawToken string) (blog blogModel.Blog, err error) {
+	err = global.GVA_DB.Where("id = ? AND is_published = ?", id, true).First(&blog).Error
+	if err != nil {
+		return
+	}
+	if _, err = ensureBlogReadable(blog, rawToken); err != nil {
+		return blog, err
+	}
+	blog.Password = nil
+	_ = global.GVA_DB.Model(&blogModel.Blog{}).Where("id = ?", id).UpdateColumn("views", gorm.Expr("views + 1")).Error
+	blog.Views++
+	return blog, nil
 }
 
 func (s *AdminArticleService) GetList(info blogReq.AdminArticleSearch) (list []blogModel.Blog, total int64, err error) {

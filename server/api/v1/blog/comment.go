@@ -4,6 +4,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -16,7 +17,7 @@ func (a *CommentApi) GetComments(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	data, err := commentService.GetPublicList(req)
+	data, err := commentService.GetPublicList(req, c.GetHeader("Authorization"))
 	if err != nil {
 		global.GVA_LOG.Error("get comments failed", zap.Error(err))
 		response.FailWithMessage("获取评论列表失败", c)
@@ -30,6 +31,11 @@ func (a *CommentApi) CreateComment(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
+	}
+	req.AccessToken = c.GetHeader("Authorization")
+	if req.IP == nil {
+		ip := utils.BlogClientIP(c.Request)
+		req.IP = &ip
 	}
 	if err := commentService.Create(req); err != nil {
 		global.GVA_LOG.Error("create comment failed", zap.Error(err))
