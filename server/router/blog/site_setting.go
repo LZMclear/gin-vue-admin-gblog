@@ -1,14 +1,14 @@
 package blog
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/gin-gonic/gin"
 )
 
 type SiteSettingRouter struct{}
 
 func (r *SiteSettingRouter) InitSiteSettingRouter(Router *gin.RouterGroup) {
-	adminRecordRouter := Router.Group("admin").Use(middleware.OperationRecord())
+	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
 	adminRouter.GET("siteSettings", siteSettingApi.GetSiteSettings)
 	adminRouter.GET("webTitleSuffix", siteSettingApi.GetWebTitleSuffix)

@@ -1,14 +1,14 @@
 package blog
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/gin-gonic/gin"
 )
 
 type CommentRouter struct{}
 
 func (r *CommentRouter) InitCommentRouter(Router *gin.RouterGroup, PublicRouter *gin.RouterGroup) {
-	adminRecordRouter := Router.Group("admin").Use(middleware.OperationRecord())
+	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
 	PublicRouter.GET("comments", commentApi.GetComments)
 	PublicRouter.POST("comment", commentApi.CreateComment)

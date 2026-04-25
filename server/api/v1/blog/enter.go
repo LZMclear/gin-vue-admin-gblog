@@ -14,6 +14,12 @@ type ApiGroup struct {
 	CommentApi      CommentApi
 	SiteSettingApi  SiteSettingApi
 	DashboardApi    DashboardApi
+	VisitLogApi     VisitLogApi
+	VisitorApi      VisitorApi
+	ExceptionLogApi ExceptionLogApi
+	LoginLogApi     LoginLogApi
+	OperationLogApi OperationLogApi
+	TelegramApi     TelegramApi
 }
 
 var (
@@ -28,4 +34,10 @@ var (
 	commentService      = service.ServiceGroupApp.BlogServiceGroup.CommentService
 	siteSettingService  = service.ServiceGroupApp.BlogServiceGroup.SiteSettingService
 	dashboardService    = service.ServiceGroupApp.BlogServiceGroup.DashboardService
+	visitLogService     = service.ServiceGroupApp.BlogServiceGroup.VisitLogService
+	visitorService      = service.ServiceGroupApp.BlogServiceGroup.VisitorService
+	exceptionLogService = service.ServiceGroupApp.BlogServiceGroup.ExceptionLogService
+	loginLogService     = service.ServiceGroupApp.BlogServiceGroup.LoginLogService
+	operationLogService = service.ServiceGroupApp.BlogServiceGroup.OperationLogService
+	telegramService     = service.ServiceGroupApp.BlogServiceGroup.TelegramService
 )

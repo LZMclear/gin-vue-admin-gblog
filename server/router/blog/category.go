@@ -1,17 +1,17 @@
 package blog
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/gin-gonic/gin"
 )
 
 type CategoryRouter struct{}
 
 func (r *CategoryRouter) InitCategoryRouter(Router *gin.RouterGroup, PublicRouter *gin.RouterGroup) {
-	adminRecordRouter := Router.Group("admin").Use(middleware.OperationRecord())
+	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
 	{
-		PublicRouter.GET("category", categoryApi.GetCategoryList)
+		PublicRouter.Group("").Use(blogmw.VisitRecord("category")).GET("category", categoryApi.GetCategoryList)
 	}
 	{
 		adminRouter.GET("categories", categoryApi.GetCategoryList)

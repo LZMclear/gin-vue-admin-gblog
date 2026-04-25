@@ -14,6 +14,12 @@ type RouterGroup struct {
 	CommentRouter
 	SiteSettingRouter
 	DashboardRouter
+	VisitLogRouter
+	VisitorRouter
+	ExceptionLogRouter
+	LoginLogRouter
+	OperationLogRouter
+	TelegramRouter
 }
 
 var (
@@ -28,4 +34,10 @@ var (
 	commentApi      = api.ApiGroupApp.BlogApiGroup.CommentApi
 	siteSettingApi  = api.ApiGroupApp.BlogApiGroup.SiteSettingApi
 	dashboardApi    = api.ApiGroupApp.BlogApiGroup.DashboardApi
+	visitLogApi     = api.ApiGroupApp.BlogApiGroup.VisitLogApi
+	visitorApi      = api.ApiGroupApp.BlogApiGroup.VisitorApi
+	exceptionLogApi = api.ApiGroupApp.BlogApiGroup.ExceptionLogApi
+	loginLogApi     = api.ApiGroupApp.BlogApiGroup.LoginLogApi
+	operationLogApi = api.ApiGroupApp.BlogApiGroup.OperationLogApi
+	telegramApi     = api.ApiGroupApp.BlogApiGroup.TelegramApi
 )

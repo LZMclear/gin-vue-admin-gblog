@@ -1,17 +1,17 @@
 package blog
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/gin-gonic/gin"
 )
 
 type FriendRouter struct{}
 
 func (r *FriendRouter) InitFriendRouter(Router *gin.RouterGroup, PublicRouter *gin.RouterGroup) {
-	adminRecordRouter := Router.Group("admin").Use(middleware.OperationRecord())
+	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
-	PublicRouter.GET("friends", friendApi.GetFriends)
-	PublicRouter.POST("friend", friendApi.AddFriendViews)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("friend")).GET("friends", friendApi.GetFriends)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("click_friend")).POST("friend", friendApi.AddFriendViews)
 	adminRouter.GET("friends", friendApi.GetFriendList)
 	adminRouter.GET("friendInfo", friendApi.GetFriendInfo)
 	adminRecordRouter.PUT("friend/published", friendApi.UpdateFriendPublished)
