@@ -3,6 +3,7 @@ package initialize
 import (
 	"context"
 	adapter "github.com/casbin/gorm-adapter/v3"
+	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/example"
 	sysModel "github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"github.com/flipped-aurora/gin-vue-admin/server/plugin/announcement/model"
@@ -66,6 +67,26 @@ func (e *ensureTables) MigrateTable(ctx context.Context) (context.Context, error
 		example.ExaFileUploadAndDownload{},
 		example.ExaAttachmentCategory{},
 
+		blogModel.About{},
+		blogModel.Blog{},
+		blogModel.BlogTag{},
+		blogModel.Category{},
+		blogModel.CityVisitor{},
+		blogModel.Comment{},
+		blogModel.ExceptionLog{},
+		blogModel.Friend{},
+		blogModel.LoginLog{},
+		blogModel.Moment{},
+		blogModel.OperationLog{},
+		blogModel.ScheduleJob{},
+		blogModel.ScheduleJobLog{},
+		blogModel.SiteSetting{},
+		blogModel.Tag{},
+		blogModel.User{},
+		blogModel.VisitLog{},
+		blogModel.VisitRecord{},
+		blogModel.Visitor{},
+
 		model.Info{},
 	}
 	for _, t := range tables {
@@ -107,6 +128,26 @@ func (e *ensureTables) TableCreated(ctx context.Context) bool {
 		example.ExaFileChunk{},
 		example.ExaFileUploadAndDownload{},
 		example.ExaAttachmentCategory{},
+
+		blogModel.About{},
+		blogModel.Blog{},
+		blogModel.BlogTag{},
+		blogModel.Category{},
+		blogModel.CityVisitor{},
+		blogModel.Comment{},
+		blogModel.ExceptionLog{},
+		blogModel.Friend{},
+		blogModel.LoginLog{},
+		blogModel.Moment{},
+		blogModel.OperationLog{},
+		blogModel.ScheduleJob{},
+		blogModel.ScheduleJobLog{},
+		blogModel.SiteSetting{},
+		blogModel.Tag{},
+		blogModel.User{},
+		blogModel.VisitLog{},
+		blogModel.VisitRecord{},
+		blogModel.Visitor{},
 
 		model.Info{},
 	}
