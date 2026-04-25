@@ -8,6 +8,12 @@ type RouterGroup struct {
 	TagRouter
 	ArticleRouter
 	AdminArticleRouter
+	AboutRouter
+	FriendRouter
+	MomentRouter
+	CommentRouter
+	SiteSettingRouter
+	DashboardRouter
 }
 
 var (
@@ -16,4 +22,10 @@ var (
 	tagApi          = api.ApiGroupApp.BlogApiGroup.TagApi
 	articleApi      = api.ApiGroupApp.BlogApiGroup.ArticleApi
 	adminArticleApi = api.ApiGroupApp.BlogApiGroup.AdminArticleApi
+	aboutApi        = api.ApiGroupApp.BlogApiGroup.AboutApi
+	friendApi       = api.ApiGroupApp.BlogApiGroup.FriendApi
+	momentApi       = api.ApiGroupApp.BlogApiGroup.MomentApi
+	commentApi      = api.ApiGroupApp.BlogApiGroup.CommentApi
+	siteSettingApi  = api.ApiGroupApp.BlogApiGroup.SiteSettingApi
+	dashboardApi    = api.ApiGroupApp.BlogApiGroup.DashboardApi
 )

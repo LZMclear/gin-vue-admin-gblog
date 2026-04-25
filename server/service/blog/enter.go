@@ -6,4 +6,10 @@ type ServiceGroup struct {
 	TagService          TagService
 	ArticleService      ArticleService
 	AdminArticleService AdminArticleService
+	AboutService        AboutService
+	FriendService       FriendService
+	MomentService       MomentService
+	CommentService      CommentService
+	SiteSettingService  SiteSettingService
+	DashboardService    DashboardService
 }

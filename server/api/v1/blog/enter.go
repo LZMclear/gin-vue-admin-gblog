@@ -8,6 +8,12 @@ type ApiGroup struct {
 	TagApi          TagApi
 	ArticleApi      ArticleApi
 	AdminArticleApi AdminArticleApi
+	AboutApi        AboutApi
+	FriendApi       FriendApi
+	MomentApi       MomentApi
+	CommentApi      CommentApi
+	SiteSettingApi  SiteSettingApi
+	DashboardApi    DashboardApi
 }
 
 var (
@@ -16,4 +22,10 @@ var (
 	tagService          = service.ServiceGroupApp.BlogServiceGroup.TagService
 	articleService      = service.ServiceGroupApp.BlogServiceGroup.ArticleService
 	adminArticleService = service.ServiceGroupApp.BlogServiceGroup.AdminArticleService
+	aboutService        = service.ServiceGroupApp.BlogServiceGroup.AboutService
+	friendService       = service.ServiceGroupApp.BlogServiceGroup.FriendService
+	momentService       = service.ServiceGroupApp.BlogServiceGroup.MomentService
+	commentService      = service.ServiceGroupApp.BlogServiceGroup.CommentService
+	siteSettingService  = service.ServiceGroupApp.BlogServiceGroup.SiteSettingService
+	dashboardService    = service.ServiceGroupApp.BlogServiceGroup.DashboardService
 )

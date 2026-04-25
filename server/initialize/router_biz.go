@@ -23,4 +23,10 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	blogRouter.InitTagRouter(privateGroup, publicGroup)
 	blogRouter.InitArticleRouter(publicGroup)
 	blogRouter.InitAdminArticleRouter(privateGroup)
+	blogRouter.InitAboutRouter(privateGroup, publicGroup)
+	blogRouter.InitFriendRouter(privateGroup, publicGroup)
+	blogRouter.InitMomentRouter(privateGroup, publicGroup)
+	blogRouter.InitCommentRouter(privateGroup, publicGroup)
+	blogRouter.InitSiteSettingRouter(privateGroup)
+	blogRouter.InitDashboardRouter(privateGroup)
 }
