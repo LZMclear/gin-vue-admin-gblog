@@ -19,5 +19,8 @@ func (r *AdminArticleRouter) InitAdminArticleRouter(Router *gin.RouterGroup) {
 		adminRecordRouter.POST("blog", adminArticleApi.CreateArticle)
 		adminRecordRouter.PUT("blog", adminArticleApi.UpdateArticle)
 		adminRecordRouter.DELETE("blog", adminArticleApi.DeleteArticle)
+		adminRecordRouter.PUT("blog/top", adminArticleApi.UpdateArticleTop)
+		adminRecordRouter.PUT("blog/recommend", adminArticleApi.UpdateArticleRecommend)
+		adminRecordRouter.PUT("blog/:id/visibility", adminArticleApi.UpdateArticleVisibility)
 	}
 }

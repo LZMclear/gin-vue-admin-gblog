@@ -2,6 +2,7 @@ package blog
 
 type ServiceGroup struct {
 	SiteService         SiteService
+	ArchiveService      ArchiveService
 	CategoryService     CategoryService
 	TagService          TagService
 	ArticleService      ArticleService

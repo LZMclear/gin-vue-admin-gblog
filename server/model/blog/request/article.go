@@ -5,6 +5,10 @@ type ArticleSearch struct {
 	PageSize int `json:"pageSize" form:"pageSize"`
 }
 
+type SearchBlogQuery struct {
+	Query string `json:"query" form:"query"`
+}
+
 type AdminArticleSearch struct {
 	Title      string `json:"title" form:"title"`
 	CategoryID *uint  `json:"categoryId" form:"categoryId"`
@@ -29,4 +33,15 @@ type ArticleUpsert struct {
 	IsTop            bool    `json:"isTop"`
 	Password         *string `json:"password"`
 	UserID           *uint   `json:"userId"`
+	Cate             any     `json:"cate"`
+	TagList          []any   `json:"tagList"`
+}
+
+type BlogVisibility struct {
+	Appreciation   *bool   `json:"appreciation"`
+	Recommend      *bool   `json:"recommend"`
+	CommentEnabled *bool   `json:"commentEnabled"`
+	Top            *bool   `json:"top"`
+	Published      *bool   `json:"published"`
+	Password       *string `json:"password"`
 }

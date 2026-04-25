@@ -4,6 +4,7 @@ import api "github.com/flipped-aurora/gin-vue-admin/server/api/v1"
 
 type RouterGroup struct {
 	SiteRouter
+	ArchiveRouter
 	CategoryRouter
 	TagRouter
 	ArticleRouter
@@ -25,6 +26,7 @@ type RouterGroup struct {
 
 var (
 	siteApi         = api.ApiGroupApp.BlogApiGroup.SiteApi
+	archiveApi      = api.ApiGroupApp.BlogApiGroup.ArchiveApi
 	categoryApi     = api.ApiGroupApp.BlogApiGroup.CategoryApi
 	tagApi          = api.ApiGroupApp.BlogApiGroup.TagApi
 	articleApi      = api.ApiGroupApp.BlogApiGroup.ArticleApi

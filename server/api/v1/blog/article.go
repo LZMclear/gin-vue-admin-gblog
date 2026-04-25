@@ -44,3 +44,18 @@ func (a *ArticleApi) GetArticle(c *gin.Context) {
 	}
 	response.OkWithData(data, c)
 }
+
+func (a *ArticleApi) SearchBlog(c *gin.Context) {
+	var req blogReq.SearchBlogQuery
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	data, err := articleService.SearchPublishedBlogs(req.Query)
+	if err != nil {
+		global.GVA_LOG.Error("search blog failed", zap.Error(err))
+		response.FailWithMessage("获取搜索结果失败", c)
+		return
+	}
+	response.OkWithData(data, c)
+}

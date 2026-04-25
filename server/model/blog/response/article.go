@@ -1,8 +1,18 @@
 package response
 
-import blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
+import "time"
 
-type CategoryAndTagResponse struct {
-	Categories []blogModel.Category `json:"categories"`
-	Tags       []blogModel.Tag      `json:"tags"`
+type SearchBlogItem struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+type ArchiveBlogItem struct {
+	ID         uint      `json:"id"`
+	Title      string    `json:"title"`
+	CreateTime time.Time `json:"createTime"`
+	IsTop      bool      `json:"top"`
+	Password   string    `json:"password"`
+	Privacy    bool      `json:"privacy"`
 }

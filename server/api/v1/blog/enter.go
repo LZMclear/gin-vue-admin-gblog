@@ -4,6 +4,7 @@ import "github.com/flipped-aurora/gin-vue-admin/server/service"
 
 type ApiGroup struct {
 	SiteApi         SiteApi
+	ArchiveApi      ArchiveApi
 	CategoryApi     CategoryApi
 	TagApi          TagApi
 	ArticleApi      ArticleApi
@@ -25,6 +26,7 @@ type ApiGroup struct {
 
 var (
 	siteService         = service.ServiceGroupApp.BlogServiceGroup.SiteService
+	archiveService      = service.ServiceGroupApp.BlogServiceGroup.ArchiveService
 	categoryService     = service.ServiceGroupApp.BlogServiceGroup.CategoryService
 	tagService          = service.ServiceGroupApp.BlogServiceGroup.TagService
 	articleService      = service.ServiceGroupApp.BlogServiceGroup.ArticleService

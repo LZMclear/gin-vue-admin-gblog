@@ -10,4 +10,5 @@ type ArticleRouter struct{}
 func (r *ArticleRouter) InitArticleRouter(PublicRouter *gin.RouterGroup) {
 	PublicRouter.Group("").Use(blogmw.VisitRecord("index")).GET("blogs", articleApi.GetArticleList)
 	PublicRouter.Group("").Use(blogmw.VisitRecord("blog")).GET("blog", articleApi.GetArticle)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("search")).GET("searchBlog", articleApi.SearchBlog)
 }
