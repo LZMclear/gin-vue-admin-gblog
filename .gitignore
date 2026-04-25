@@ -43,3 +43,6 @@ web/pnpm-lock.yaml
 *.sqlite3
 
 .tmp/mcp
+
+# java project files
+/blog-api
