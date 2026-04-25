@@ -35,6 +35,15 @@ func (s *ArticleService) GetPublishedList(info blogReq.ArticleSearch) (list []bl
 	return
 }
 
+func (s *ArticleService) GetPublishedListView(info blogReq.ArticleSearch) (list []blogResp.BlogInfoItem, total int64, err error) {
+	var blogs []blogModel.Blog
+	blogs, total, err = s.GetPublishedList(info)
+	if err != nil {
+		return nil, 0, err
+	}
+	return buildBlogInfoItems(blogs), total, nil
+}
+
 func (s *ArticleService) GetPublishedByID(id uint) (blog blogModel.Blog, err error) {
 	err = global.GVA_DB.Where("id = ? AND is_published = ?", id, true).First(&blog).Error
 	return
@@ -52,6 +61,14 @@ func (s *ArticleService) GetPublishedByIDWithToken(id uint, rawToken string) (bl
 	_ = global.GVA_DB.Model(&blogModel.Blog{}).Where("id = ?", id).UpdateColumn("views", gorm.Expr("views + 1")).Error
 	blog.Views++
 	return blog, nil
+}
+
+func (s *ArticleService) GetPublishedDetailByIDWithToken(id uint, rawToken string) (blogResp.BlogDetail, error) {
+	entity, err := s.GetPublishedByIDWithToken(id, rawToken)
+	if err != nil {
+		return blogResp.BlogDetail{}, err
+	}
+	return buildBlogDetail(entity), nil
 }
 
 func (s *ArticleService) SearchPublishedBlogs(query string) ([]blogResp.SearchBlogItem, error) {
@@ -105,9 +122,26 @@ func (s *AdminArticleService) GetList(info blogReq.AdminArticleSearch) (list []b
 	return
 }
 
+func (s *AdminArticleService) GetListView(info blogReq.AdminArticleSearch) (list []blogResp.AdminArticleListItem, total int64, err error) {
+	var blogs []blogModel.Blog
+	blogs, total, err = s.GetList(info)
+	if err != nil {
+		return nil, 0, err
+	}
+	return buildAdminArticleListItems(blogs), total, nil
+}
+
 func (s *AdminArticleService) GetByID(id uint) (blog blogModel.Blog, err error) {
 	err = global.GVA_DB.First(&blog, id).Error
 	return
+}
+
+func (s *AdminArticleService) GetDetailByID(id uint) (blogResp.AdminArticleDetail, error) {
+	entity, err := s.GetByID(id)
+	if err != nil {
+		return blogResp.AdminArticleDetail{}, err
+	}
+	return buildAdminArticleDetail(entity), nil
 }
 
 func (s *AdminArticleService) GetCategoryAndTag() (res blogResp.CategoryAndTagResponse, err error) {
@@ -281,6 +315,213 @@ func buildSearchSnippet(content, query string) string {
 		end = len(runes)
 	}
 	return string(runes[start:end])
+}
+
+func buildBlogInfoItems(blogs []blogModel.Blog) []blogResp.BlogInfoItem {
+	categoryMap := getCategoryMapFromBlogs(blogs)
+	tagMap := getTagMapByBlogIDs(blogIDsFromBlogs(blogs))
+	items := make([]blogResp.BlogInfoItem, 0, len(blogs))
+	for _, item := range blogs {
+		info := blogResp.BlogInfoItem{
+			ID:          item.ID,
+			Title:       item.Title,
+			Description: item.Description,
+			CreateTime:  item.CreateTime,
+			Views:       item.Views,
+			Words:       item.Words,
+			ReadTime:    item.ReadTime,
+			Top:         item.IsTop,
+			Category:    categoryMap[item.CategoryID],
+			Tags:        tagMap[item.ID],
+		}
+		if item.Password != nil && strings.TrimSpace(*item.Password) != "" {
+			info.Privacy = true
+		}
+		items = append(items, info)
+	}
+	return items
+}
+
+func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {
+	categoryMap := getCategoryMapFromBlogs([]blogModel.Blog{item})
+	tagMap := getTagMapByBlogIDs([]uint{item.ID})
+	resp := blogResp.BlogDetail{
+		ID:             item.ID,
+		Title:          item.Title,
+		FirstPicture:   item.FirstPicture,
+		Content:        item.Content,
+		Description:    item.Description,
+		Published:      item.IsPublished,
+		Recommend:      item.IsRecommend,
+		Appreciation:   item.IsAppreciation,
+		CommentEnabled: item.IsCommentEnabled,
+		Top:            item.IsTop,
+		CreateTime:     item.CreateTime,
+		UpdateTime:     item.UpdateTime,
+		Views:          item.Views,
+		Words:          item.Words,
+		ReadTime:       item.ReadTime,
+		Category:       categoryMap[item.CategoryID],
+		Tags:           tagMap[item.ID],
+		UserID:         item.UserID,
+	}
+	if item.Password != nil && strings.TrimSpace(*item.Password) != "" {
+		resp.Privacy = true
+	}
+	return resp
+}
+
+func buildAdminArticleListItems(blogs []blogModel.Blog) []blogResp.AdminArticleListItem {
+	categoryMap := getCategoryMapFromBlogs(blogs)
+	items := make([]blogResp.AdminArticleListItem, 0, len(blogs))
+	for _, item := range blogs {
+		row := blogResp.AdminArticleListItem{
+			ID:             item.ID,
+			Title:          item.Title,
+			FirstPicture:   item.FirstPicture,
+			Description:    item.Description,
+			Published:      item.IsPublished,
+			Recommend:      item.IsRecommend,
+			Appreciation:   item.IsAppreciation,
+			CommentEnabled: item.IsCommentEnabled,
+			Top:            item.IsTop,
+			CreateTime:     item.CreateTime,
+			UpdateTime:     item.UpdateTime,
+			Views:          item.Views,
+			Words:          item.Words,
+			ReadTime:       item.ReadTime,
+			Category:       categoryMap[item.CategoryID],
+			CategoryID:     item.CategoryID,
+		}
+		if item.Password != nil {
+			row.Password = *item.Password
+		}
+		items = append(items, row)
+	}
+	return items
+}
+
+func buildAdminArticleDetail(item blogModel.Blog) blogResp.AdminArticleDetail {
+	categoryMap := getCategoryMapFromBlogs([]blogModel.Blog{item})
+	tagMap := getTagMapByBlogIDs([]uint{item.ID})
+	tagIDs := getTagIDsByBlogIDs([]uint{item.ID})
+	tagList := make([]any, 0, len(tagIDs[item.ID]))
+	for _, tagID := range tagIDs[item.ID] {
+		tagList = append(tagList, tagID)
+	}
+	resp := blogResp.AdminArticleDetail{
+		ID:             item.ID,
+		Title:          item.Title,
+		FirstPicture:   item.FirstPicture,
+		Content:        item.Content,
+		Description:    item.Description,
+		Published:      item.IsPublished,
+		Recommend:      item.IsRecommend,
+		Appreciation:   item.IsAppreciation,
+		CommentEnabled: item.IsCommentEnabled,
+		Top:            item.IsTop,
+		CreateTime:     item.CreateTime,
+		UpdateTime:     item.UpdateTime,
+		Views:          item.Views,
+		Words:          item.Words,
+		ReadTime:       item.ReadTime,
+		Category:       categoryMap[item.CategoryID],
+		Tags:           tagMap[item.ID],
+		Cate:           item.CategoryID,
+		TagList:        tagList,
+		UserID:         item.UserID,
+	}
+	if item.Password != nil {
+		resp.Password = *item.Password
+	}
+	return resp
+}
+
+func blogIDsFromBlogs(blogs []blogModel.Blog) []uint {
+	ids := make([]uint, 0, len(blogs))
+	for _, item := range blogs {
+		ids = append(ids, item.ID)
+	}
+	return ids
+}
+
+func getCategoryMapFromBlogs(blogs []blogModel.Blog) map[uint]*blogModel.Category {
+	categoryIDs := make([]uint, 0, len(blogs))
+	seen := map[uint]struct{}{}
+	for _, item := range blogs {
+		if _, ok := seen[item.CategoryID]; ok {
+			continue
+		}
+		seen[item.CategoryID] = struct{}{}
+		categoryIDs = append(categoryIDs, item.CategoryID)
+	}
+	if len(categoryIDs) == 0 {
+		return map[uint]*blogModel.Category{}
+	}
+	var categories []blogModel.Category
+	if err := global.GVA_DB.Where("id IN ?", categoryIDs).Find(&categories).Error; err != nil {
+		return map[uint]*blogModel.Category{}
+	}
+	categoryMap := make(map[uint]*blogModel.Category, len(categories))
+	for i := range categories {
+		categoryMap[categories[i].ID] = &categories[i]
+	}
+	return categoryMap
+}
+
+func getTagMapByBlogIDs(blogIDs []uint) map[uint][]blogModel.Tag {
+	tagMap := make(map[uint][]blogModel.Tag)
+	tagIDsByBlog := getTagIDsByBlogIDs(blogIDs)
+	if len(tagIDsByBlog) == 0 {
+		return tagMap
+	}
+
+	allTagIDs := make([]uint, 0)
+	tagSeen := map[uint]struct{}{}
+	for _, ids := range tagIDsByBlog {
+		for _, id := range ids {
+			if _, ok := tagSeen[id]; ok {
+				continue
+			}
+			tagSeen[id] = struct{}{}
+			allTagIDs = append(allTagIDs, id)
+		}
+	}
+
+	var tags []blogModel.Tag
+	if err := global.GVA_DB.Where("id IN ?", allTagIDs).Find(&tags).Error; err != nil {
+		return tagMap
+	}
+	tagIndex := make(map[uint]blogModel.Tag, len(tags))
+	for _, tag := range tags {
+		tagIndex[tag.ID] = tag
+	}
+
+	for blogID, tagIDs := range tagIDsByBlog {
+		list := make([]blogModel.Tag, 0, len(tagIDs))
+		for _, tagID := range tagIDs {
+			if tag, ok := tagIndex[tagID]; ok {
+				list = append(list, tag)
+			}
+		}
+		tagMap[blogID] = list
+	}
+	return tagMap
+}
+
+func getTagIDsByBlogIDs(blogIDs []uint) map[uint][]uint {
+	if len(blogIDs) == 0 {
+		return map[uint][]uint{}
+	}
+	var relations []blogModel.BlogTag
+	if err := global.GVA_DB.Where("blog_id IN ?", blogIDs).Find(&relations).Error; err != nil {
+		return map[uint][]uint{}
+	}
+	result := make(map[uint][]uint)
+	for _, relation := range relations {
+		result[relation.BlogID] = append(result[relation.BlogID], relation.TagID)
+	}
+	return result
 }
 
 func (s *AdminArticleService) resolveCategoryID(tx *gorm.DB, info blogReq.ArticleUpsert) (uint, error) {

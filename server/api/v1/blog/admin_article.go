@@ -16,7 +16,7 @@ func (a *AdminArticleApi) GetArticleList(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	list, total, err := adminArticleService.GetList(req)
+	list, total, err := adminArticleService.GetListView(req)
 	if err != nil {
 		global.GVA_LOG.Error("get admin article list failed", zap.Error(err))
 		response.FailWithMessage("获取后台文章列表失败", c)
@@ -36,7 +36,7 @@ func (a *AdminArticleApi) GetArticle(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	data, err := adminArticleService.GetByID(req.ID)
+	data, err := adminArticleService.GetDetailByID(req.ID)
 	if err != nil {
 		global.GVA_LOG.Error("get admin article failed", zap.Error(err))
 		response.FailWithMessage("获取后台文章失败", c)

@@ -16,7 +16,7 @@ func (a *ArticleApi) GetArticleList(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	list, total, err := articleService.GetPublishedList(req)
+	list, total, err := articleService.GetPublishedListView(req)
 	if err != nil {
 		global.GVA_LOG.Error("get article list failed", zap.Error(err))
 		response.FailWithMessage("获取文章列表失败", c)
@@ -36,7 +36,7 @@ func (a *ArticleApi) GetArticle(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	data, err := articleService.GetPublishedByIDWithToken(req.ID, c.GetHeader("Authorization"))
+	data, err := articleService.GetPublishedDetailByIDWithToken(req.ID, c.GetHeader("Authorization"))
 	if err != nil {
 		global.GVA_LOG.Error("get article failed", zap.Error(err))
 		response.FailWithMessage("获取文章失败", c)
