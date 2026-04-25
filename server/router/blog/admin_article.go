@@ -1,14 +1,14 @@
 package blog
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/gin-gonic/gin"
 )
 
 type AdminArticleRouter struct{}
 
 func (r *AdminArticleRouter) InitAdminArticleRouter(Router *gin.RouterGroup) {
-	adminRecordRouter := Router.Group("admin").Use(middleware.OperationRecord())
+	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
 	{
 		adminRouter.GET("blogs", adminArticleApi.GetArticleList)
@@ -19,5 +19,8 @@ func (r *AdminArticleRouter) InitAdminArticleRouter(Router *gin.RouterGroup) {
 		adminRecordRouter.POST("blog", adminArticleApi.CreateArticle)
 		adminRecordRouter.PUT("blog", adminArticleApi.UpdateArticle)
 		adminRecordRouter.DELETE("blog", adminArticleApi.DeleteArticle)
+		adminRecordRouter.PUT("blog/top", adminArticleApi.UpdateArticleTop)
+		adminRecordRouter.PUT("blog/recommend", adminArticleApi.UpdateArticleRecommend)
+		adminRecordRouter.PUT("blog/:id/visibility", adminArticleApi.UpdateArticleVisibility)
 	}
 }
