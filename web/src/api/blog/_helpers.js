@@ -27,14 +27,26 @@ export const asPageResult = (res, list = []) => ({
   }
 })
 
+const toNumber = (value, fallback = 0) => {
+  if (value === '' || value === null || value === undefined) {
+    return fallback
+  }
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : fallback
+}
+
 export const mapArticleOut = (form = {}) => ({
   ...form,
+  id: toNumber(form.id),
+  words: toNumber(form.words),
+  readTime: toNumber(form.readTime),
+  views: toNumber(form.views),
   isPublished: form.isPublished ?? form.published ?? false,
   isRecommend: form.isRecommend ?? form.recommend ?? false,
   isAppreciation: form.isAppreciation ?? form.appreciation ?? false,
   isCommentEnabled: form.isCommentEnabled ?? form.commentEnabled ?? false,
   isTop: form.isTop ?? form.top ?? false,
-  categoryId: form.categoryId ?? form.cate,
+  categoryId: toNumber(form.categoryId ?? form.cate),
   tagList: form.tagList ?? []
 })
 
