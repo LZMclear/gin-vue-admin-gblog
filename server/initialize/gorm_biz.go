@@ -16,7 +16,6 @@ func bizModel() error {
 		blogModel.Comment{},
 		blogModel.ExceptionLog{},
 		blogModel.Friend{},
-		blogModel.LoginLog{},
 		blogModel.Moment{},
 		blogModel.OperationLog{},
 		blogModel.ScheduleJob{},

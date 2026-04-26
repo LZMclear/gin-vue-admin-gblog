@@ -18,7 +18,6 @@ type RouterGroup struct {
 	VisitLogRouter
 	VisitorRouter
 	ExceptionLogRouter
-	LoginLogRouter
 	OperationLogRouter
 	TelegramRouter
 	AuthRouter
@@ -40,7 +39,6 @@ var (
 	visitLogApi     = api.ApiGroupApp.BlogApiGroup.VisitLogApi
 	visitorApi      = api.ApiGroupApp.BlogApiGroup.VisitorApi
 	exceptionLogApi = api.ApiGroupApp.BlogApiGroup.ExceptionLogApi
-	loginLogApi     = api.ApiGroupApp.BlogApiGroup.LoginLogApi
 	operationLogApi = api.ApiGroupApp.BlogApiGroup.OperationLogApi
 	telegramApi     = api.ApiGroupApp.BlogApiGroup.TelegramApi
 	authApi         = api.ApiGroupApp.BlogApiGroup.AuthApi
