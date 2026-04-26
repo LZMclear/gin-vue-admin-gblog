@@ -3,7 +3,7 @@ import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 //https://www.guitu.life/api/
 const request = axios.create({
-	baseURL: 'http://localhost:8090/',
+	baseURL: process.env.VUE_APP_BASE_API || '/api',
 	timeout: 10000,
 })
 
