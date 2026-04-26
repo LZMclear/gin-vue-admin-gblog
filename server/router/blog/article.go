@@ -1,10 +1,14 @@
 package blog
 
-import "github.com/gin-gonic/gin"
+import (
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
+	"github.com/gin-gonic/gin"
+)
 
 type ArticleRouter struct{}
 
 func (r *ArticleRouter) InitArticleRouter(PublicRouter *gin.RouterGroup) {
-	PublicRouter.GET("blogs", articleApi.GetArticleList)
-	PublicRouter.GET("blog", articleApi.GetArticle)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("index")).GET("blogs", articleApi.GetArticleList)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("blog")).GET("blog", articleApi.GetArticle)
+	PublicRouter.Group("").Use(blogmw.VisitRecord("search")).GET("searchBlog", articleApi.SearchBlog)
 }

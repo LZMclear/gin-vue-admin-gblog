@@ -1,6 +1,7 @@
 package initialize
 
 import (
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	"github.com/flipped-aurora/gin-vue-admin/server/router"
 	"github.com/gin-gonic/gin"
 )
@@ -12,15 +13,32 @@ func holder(routers ...*gin.RouterGroup) {
 }
 
 func initBizRouter(routers ...*gin.RouterGroup) {
-	privateGroup := routers[0]
-	publicGroup := routers[1]
+	privateGroup := routers[0].Group("")
+	privateGroup.Use(blogmw.Recovery())
+	publicGroup := routers[1].Group("")
+	publicGroup.Use(blogmw.Recovery())
 	blogRouter := router.RouterGroupApp.Blog
 
 	holder(publicGroup, privateGroup)
 
 	blogRouter.InitSiteRouter(publicGroup)
+	blogRouter.InitArchiveRouter(publicGroup)
+	blogRouter.InitAuthRouter(publicGroup)
 	blogRouter.InitCategoryRouter(privateGroup, publicGroup)
 	blogRouter.InitTagRouter(privateGroup, publicGroup)
 	blogRouter.InitArticleRouter(publicGroup)
 	blogRouter.InitAdminArticleRouter(privateGroup)
+	blogRouter.InitAboutRouter(privateGroup, publicGroup)
+	blogRouter.InitFriendRouter(privateGroup, publicGroup)
+	blogRouter.InitMomentRouter(privateGroup, publicGroup)
+	blogRouter.InitCommentRouter(privateGroup, publicGroup)
+	blogRouter.InitSiteSettingRouter(privateGroup)
+	blogRouter.InitDashboardRouter(privateGroup)
+	blogRouter.InitVisitLogRouter(privateGroup)
+	blogRouter.InitVisitorRouter(privateGroup)
+	blogRouter.InitExceptionLogRouter(privateGroup)
+	blogRouter.InitLoginLogRouter(privateGroup)
+	blogRouter.InitOperationLogRouter(privateGroup)
+	blogRouter.InitTelegramRouter(publicGroup)
+
 }

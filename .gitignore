@@ -46,3 +46,4 @@ web/pnpm-lock.yaml
 
 # java project files
 /blog-api
+/blog-cms
