@@ -104,7 +104,11 @@
 				this.mobileHide = !this.mobileHide
 			},
 			categoryRoute(name) {
-				this.$router.push(`/category/${name}`)
+				this.$router.push({name: 'category', params: {name}}).catch(err => {
+					if (err.name !== 'NavigationDuplicated') {
+						throw err
+					}
+				})
 			},
 			debounceQuery(queryString, callback) {
 				this.timer && clearTimeout(this.timer)
@@ -135,7 +139,11 @@
 			},
 			handleSelect(item) {
 				if (item.id) {
-					this.$router.push(`/blog/${item.id}`)
+					this.$router.push({name: 'blog', params: {id: item.id}}).catch(err => {
+						if (err.name !== 'NavigationDuplicated') {
+							throw err
+						}
+					})
 				}
 			}
 		}

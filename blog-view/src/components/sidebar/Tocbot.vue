@@ -35,7 +35,10 @@
 		},
 		methods: {
 			initTocbot() {
-				tocbot.init({
+				if (!window.tocbot || typeof window.tocbot.init !== 'function') {
+					return
+				}
+				window.tocbot.init({
 					// Where to render the table of contents.
 					tocSelector: '.js-toc',
 					// Where to grab the headings to build the table of contents.

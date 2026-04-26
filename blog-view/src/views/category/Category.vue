@@ -41,6 +41,12 @@
 			getBlogList(pageNum) {
 				getBlogListByCategoryName(this.categoryName, pageNum).then(res => {
 					if (isSuccess(res)) {
+						if (!res.data || !Array.isArray(res.data.list)) {
+							this.blogList = []
+							this.totalPage = 0
+							this.msgInfo('分类文章列表接口暂未对接')
+							return
+						}
 						this.blogList = normalizeBlogs(res.data.list)
 						this.totalPage = getTotalPage(res.data)
 						this.$nextTick(() => {

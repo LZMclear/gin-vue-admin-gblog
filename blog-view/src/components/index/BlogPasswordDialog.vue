@@ -46,7 +46,11 @@
 							if (isSuccess(res)) {
 								this.msgSuccess(res.msg)
 								window.localStorage.setItem(`blog${this.blogPasswordForm.blogId}`, res.data)
-								this.$router.push(`/blog/${this.blogPasswordForm.blogId}`)
+								this.$router.push({name: 'blog', params: {id: this.blogPasswordForm.blogId}}).catch(err => {
+									if (err.name !== 'NavigationDuplicated') {
+										throw err
+									}
+								})
 								this.blogPasswordDialogClosed()
 							} else {
 								this.msgError(res.msg)

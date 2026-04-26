@@ -15,6 +15,14 @@ import paopaoMapper from '@/plugins/paopaoMapper.json'
 import sanitizeHtml from 'sanitize-html'
 import {isSuccess, normalizeCommentPage} from '@/util/gvaResponse'
 
+function pushRoute(location) {
+	return router.push(location).catch(err => {
+		if (err && err.name !== 'NavigationDuplicated') {
+			throw err
+		}
+	})
+}
+
 export default {
 	getCommentList({commit, rootState}) {
 		//密码保护的文章，需要发送密码验证通过后保存在localStorage的Token
@@ -106,12 +114,12 @@ export default {
 			const blogToken = window.localStorage.getItem(`blog${blog.id}`)
 			//对于密码保护文章，博主身份Token和经过密码验证后的Token都可以跳转路由，再由后端验证Token有效性
 			if (adminToken || blogToken) {
-				return router.push(`/blog/${blog.id}`)
+				return pushRoute({name: 'blog', params: {id: blog.id}})
 			}
 			commit(SET_BLOG_PASSWORD_FORM, {blogId: blog.id, password: ''})
 			commit(SET_BLOG_PASSWORD_DIALOG_VISIBLE, true)
 		} else {
-			router.push(`/blog/${blog.id}`)
+			pushRoute({name: 'blog', params: {id: blog.id}})
 		}
 	},
 }
