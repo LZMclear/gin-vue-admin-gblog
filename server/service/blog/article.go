@@ -58,8 +58,7 @@ func (s *ArticleService) GetPublishedByIDWithToken(id uint, rawToken string) (bl
 		return blog, err
 	}
 	blog.Password = nil
-	_ = global.GVA_DB.Model(&blogModel.Blog{}).Where("id = ?", id).UpdateColumn("views", gorm.Expr("views + 1")).Error
-	blog.Views++
+	blog.Views = s.IncrementViews(id, blog.Views)
 	return blog, nil
 }
 

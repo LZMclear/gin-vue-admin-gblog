@@ -18,7 +18,6 @@ func bizModel() error {
 		blogModel.Friend{},
 		blogModel.Moment{},
 		blogModel.OperationLog{},
-		blogModel.ScheduleJob{},
 		blogModel.ScheduleJobLog{},
 		blogModel.SiteSetting{},
 		blogModel.Tag{},
