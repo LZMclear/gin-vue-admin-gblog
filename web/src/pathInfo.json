@@ -9,7 +9,6 @@
   "/src/view/blog/moment/WriteMoment.vue": "BlogWriteMoment",
   "/src/view/blog/tag/TagList.vue": "BlogTagList",
   "/src/view/blogLog/ExceptionLog.vue": "BlogExceptionLog",
-  "/src/view/blogLog/LoginLog.vue": "BlogLoginLog",
   "/src/view/blogLog/OperationLog.vue": "BlogOperationLog",
   "/src/view/blogLog/VisitLog.vue": "BlogVisitLog",
   "/src/view/blogPage/About.vue": "BlogAbout",
