@@ -1,6 +1,8 @@
 package blog
 
 import (
+	"errors"
+
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 )
@@ -14,12 +16,46 @@ func (s *AboutService) GetList() ([]blogModel.About, error) {
 }
 
 func (s *AboutService) UpdateValues(values map[string]string) error {
+	if len(values) == 0 {
+		return errors.New("about values is empty")
+	}
+
 	tx := global.GVA_DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
 	for key, value := range values {
-		if err := tx.Model(&blogModel.About{}).Where("name_en = ?", key).Update("value", value).Error; err != nil {
+		result := tx.Model(&blogModel.About{}).Where("name_en = ?", key).Update("value", value)
+		if result.Error != nil {
 			tx.Rollback()
-			return err
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			if err := tx.Create(&blogModel.About{
+				NameEn: key,
+				NameZh: aboutNameZh(key),
+				Value:  value,
+			}).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
 	}
 	return tx.Commit().Error
+}
+
+func aboutNameZh(nameEn string) string {
+	switch nameEn {
+	case "title":
+		return "标题"
+	case "musicId":
+		return "网易云歌曲ID"
+	case "content":
+		return "正文Markdown"
+	case "commentEnabled":
+		return "评论开关"
+	default:
+		return nameEn
+	}
 }

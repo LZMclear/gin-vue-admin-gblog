@@ -51,15 +51,12 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogVisitorStats' })
-</script>
-
 <script>
 	import {getVisitorList, deleteVisitor} from "@/api/blog/visitor";
 	import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 
 	export default {
+		name: 'BlogVisitorStats',
 		components: {DateTimeRangePicker},
 		data() {
 			return {

@@ -9,7 +9,7 @@
 
 		<el-table :data="categoryList">
 			<el-table-column label="序号" type="index" width="50"></el-table-column>
-			<el-table-column label="名称" prop="name"></el-table-column>
+			<el-table-column label="名称" prop="categoryName"></el-table-column>
 			<el-table-column label="操作">
 				<template v-slot="scope">
 					<el-button type="primary" icon="el-icon-edit" size="small" @click="showEditDialog(scope.row)">编辑</el-button>
@@ -30,8 +30,8 @@
 		<el-dialog title="添加分类" width="50%" v-model="addDialogVisible" :close-on-click-modal="false" @close="addDialogClosed">
 			<!--内容主体-->
 			<el-form :model="addForm" :rules="formRules" ref="addFormRef" label-width="80px">
-				<el-form-item label="分类名称" prop="name">
-					<el-input v-model="addForm.name"></el-input>
+				<el-form-item label="分类名称" prop="categoryName">
+					<el-input v-model="addForm.categoryName"></el-input>
 				</el-form-item>
 			</el-form>
 			<!--底部-->
@@ -45,8 +45,8 @@
 		<el-dialog title="编辑分类" width="50%" v-model="editDialogVisible" :close-on-click-modal="false" @close="editDialogClosed">
 			<!--内容主体-->
 			<el-form :model="editForm" :rules="formRules" ref="editFormRef" label-width="80px">
-				<el-form-item label="分类名称" prop="name">
-					<el-input v-model="editForm.name"></el-input>
+				<el-form-item label="分类名称" prop="categoryName">
+					<el-input v-model="editForm.categoryName"></el-input>
 				</el-form-item>
 			</el-form>
 			<!--底部-->
@@ -58,14 +58,16 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogCategoryList' })
-</script>
-
 <script>
-	import {getData, addCategory, editCategory, deleteCategoryById} from '@/api/blog/category'
+	import {
+		getData as fetchCategoryData,
+		addCategory as createCategory,
+		editCategory as updateCategory,
+		deleteCategoryById as removeCategory
+	} from '@/api/blog/category'
 
 	export default {
+		name: 'BlogCategoryList',
 		components: {},
 		data() {
 			return {
@@ -78,11 +80,11 @@ defineOptions({ name: 'BlogCategoryList' })
 				addDialogVisible: false,
 				editDialogVisible: false,
 				addForm: {
-					name: ''
+					categoryName: ''
 				},
 				editForm: {},
 				formRules: {
-					name: [{required: true, message: '请输入分类名称', trigger: 'blur'}]
+					categoryName: [{required: true, message: '请输入分类名称', trigger: 'blur'}]
 				}
 			}
 		},
@@ -91,7 +93,7 @@ defineOptions({ name: 'BlogCategoryList' })
 		},
 		methods: {
 			getData() {
-				getData(this.queryInfo).then(res => {
+				fetchCategoryData(this.queryInfo).then(res => {
 					this.categoryList = res.data.list
 					this.total = res.data.total
 				})
@@ -116,7 +118,7 @@ defineOptions({ name: 'BlogCategoryList' })
 			addCategory() {
 				this.$refs.addFormRef.validate(valid => {
 					if (valid) {
-						addCategory(this.addForm).then(res => {
+						createCategory(this.addForm).then(res => {
 							this.msgSuccess(res.msg)
 							this.addDialogVisible = false
 							this.getData()
@@ -127,7 +129,7 @@ defineOptions({ name: 'BlogCategoryList' })
 			editCategory() {
 				this.$refs.editFormRef.validate(valid => {
 					if (valid) {
-						editCategory(this.editForm).then(res => {
+						updateCategory(this.editForm).then(res => {
 							this.msgSuccess(res.msg)
 							this.editDialogVisible = false
 							this.getData()
@@ -142,7 +144,7 @@ defineOptions({ name: 'BlogCategoryList' })
 				this.editDialogVisible = true
 			},
 			deleteCategoryById(id) {
-				deleteCategoryById(id).then(res => {
+				removeCategory(id).then(res => {
 					this.msgSuccess(res.msg)
 					this.getData()
 				})

@@ -29,14 +29,11 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogAbout' })
-</script>
-
 <script>
 	import {getAbout, updateAbout} from "@/api/blog/about";
 
 	export default {
+		name: 'BlogAbout',
 		components: {},
 		data() {
 			return {
@@ -46,6 +43,7 @@ defineOptions({ name: 'BlogAbout' })
 					content: '',
 					commentEnabled: true
 				},
+				hasLoaded: false,
 				formRules: {
 					title: [{required: true, message: '请输入标题', trigger: 'change'}],
 				}
@@ -54,13 +52,19 @@ defineOptions({ name: 'BlogAbout' })
 		created() {
 			this.getData()
 		},
+		activated() {
+			if (this.hasLoaded) {
+				this.getData()
+			}
+		},
 		methods: {
 			getData() {
 				getAbout().then(res => {
 					this.form.title = res.data.title
 					this.form.musicId = res.data.musicId
 					this.form.content = res.data.content
-					this.form.commentEnabled = res.data.commentEnabled === 'true' ? true : false
+					this.form.commentEnabled = res.data.commentEnabled
+					this.hasLoaded = true
 				})
 			},
 			submit() {
@@ -68,7 +72,7 @@ defineOptions({ name: 'BlogAbout' })
 					if (valid) {
 						//纯数字
 						const reg = /^\d{1,}$/
-						if (!reg.test(this.form.musicId)) {
+						if (this.form.musicId && !reg.test(this.form.musicId)) {
 							return this.msgError("歌曲ID有误")
 						}
 						updateAbout(this.form).then(res => {

@@ -1,19 +1,19 @@
 import service from '@/utils/request'
-import { asPageResult, mapCategoryIn, mapCategoryOut, normalizePageQuery } from './_helpers'
+import { asPageResult, normalizePageQuery } from './_helpers'
 
 export function getData(queryInfo) {
   return service({
     url: '/admin/categories',
     method: 'GET',
     params: normalizePageQuery(queryInfo)
-  }).then(res => asPageResult(res, (res.data || []).map(mapCategoryIn)))
+  }).then(res => asPageResult(res, res.data || []))
 }
 
 export function addCategory(form) {
   return service({
     url: '/admin/category',
     method: 'POST',
-    data: mapCategoryOut(form)
+    data: form
   })
 }
 
@@ -21,7 +21,7 @@ export function editCategory(form) {
   return service({
     url: '/admin/category',
     method: 'PUT',
-    data: mapCategoryOut(form)
+    data: form
   })
 }
 

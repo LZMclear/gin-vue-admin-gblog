@@ -73,15 +73,12 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogSiteSetting' })
-</script>
-
 <script>
 	import {getSiteSettingData, update} from "@/api/blog/siteSetting";
 	import _ from 'lodash'
 
 	export default {
+		name: 'BlogSiteSetting',
 		components: {},
 		data() {
 			return {

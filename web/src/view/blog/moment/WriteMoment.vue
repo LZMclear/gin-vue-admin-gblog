@@ -21,14 +21,11 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogWriteMoment' })
-</script>
-
 <script>
 	import {getMomentById, saveMoment, updateMoment} from "@/api/blog/moment";
 
 	export default {
+		name: 'BlogWriteMoment',
 		components: {},
 		data() {
 			return {
