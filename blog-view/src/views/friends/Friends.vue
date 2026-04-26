@@ -32,7 +32,7 @@
 <script>
 	import {getData, addViewsByNickname} from "@/api/friend";
 	import CommentList from "@/components/comment/CommentList";
-	import {isSuccess} from "@/util/gvaResponse";
+	import {isSuccess, normalizeFriendPage} from "@/util/gvaResponse";
 
 	export default {
 		name: "Friends",
@@ -58,8 +58,9 @@
 			getData() {
 				getData().then(res => {
 					if (isSuccess(res)) {
-						this.friendList = res.data.friendList
-						this.info = res.data.friendInfo
+						const data = normalizeFriendPage(res.data)
+						this.friendList = data.friendList
+						this.info = data.friendInfo
 					} else {
 						this.msgError(res.msg)
 					}

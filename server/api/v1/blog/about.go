@@ -1,6 +1,8 @@
 package blog
 
 import (
+	"strings"
+
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
@@ -11,7 +13,15 @@ import (
 type AboutApi struct{}
 
 func (a *AboutApi) GetAbout(c *gin.Context) {
-	list, err := aboutService.GetList()
+	var (
+		list any
+		err  error
+	)
+	if strings.Contains(c.FullPath(), "admin/") {
+		list, err = aboutService.GetList()
+	} else {
+		list, err = aboutService.GetPublicList()
+	}
 	if err != nil {
 		global.GVA_LOG.Error("get about failed", zap.Error(err))
 		response.FailWithMessage("获取关于页失败", c)

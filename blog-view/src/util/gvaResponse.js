@@ -105,6 +105,19 @@ export function normalizeAbout(data) {
 	}, {})
 }
 
+export function normalizeFriendPage(data = {}) {
+	return data
+}
+
+export function normalizeMoments(moments) {
+	return Array.isArray(moments)
+		? moments.map(item => ({
+			...item,
+			published: item.published !== undefined ? item.published : item.isPublished
+		}))
+		: []
+}
+
 export function normalizeCommentPage(data = {}) {
 	const comments = data.comments || {}
 	const list = Array.isArray(comments.list) ? comments.list : []

@@ -33,7 +33,7 @@
 
 <script>
 	import {getMomentListByPageNum, likeMoment} from "@/api/moment";
-	import {getTotalPage, isSuccess} from "@/util/gvaResponse";
+	import {getTotalPage, isSuccess, normalizeMoments} from "@/util/gvaResponse";
 
 	export default {
 		name: "Moments",
@@ -69,7 +69,7 @@
 				const token = adminToken ? adminToken : ''
 				getMomentListByPageNum(token, this.pageNum).then(res => {
 					if (isSuccess(res)) {
-						this.momentList = res.data.list
+						this.momentList = normalizeMoments(res.data.list)
 						this.totalPage = getTotalPage(res.data)
 					} else {
 						this.msgError(res.msg)

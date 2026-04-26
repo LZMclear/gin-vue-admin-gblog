@@ -12,6 +12,7 @@ import (
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"gorm.io/gorm"
 )
 
@@ -324,7 +325,7 @@ func buildBlogInfoItems(blogs []blogModel.Blog) []blogResp.BlogInfoItem {
 		info := blogResp.BlogInfoItem{
 			ID:          item.ID,
 			Title:       item.Title,
-			Description: item.Description,
+			Description: utils.MarkdownToHTML(item.Description),
 			CreateTime:  item.CreateTime,
 			Views:       item.Views,
 			Words:       item.Words,
@@ -348,8 +349,8 @@ func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {
 		ID:             item.ID,
 		Title:          item.Title,
 		FirstPicture:   item.FirstPicture,
-		Content:        item.Content,
-		Description:    item.Description,
+		Content:        utils.MarkdownToHTML(item.Content),
+		Description:    utils.MarkdownToHTML(item.Description),
 		Published:      item.IsPublished,
 		Recommend:      item.IsRecommend,
 		Appreciation:   item.IsAppreciation,
