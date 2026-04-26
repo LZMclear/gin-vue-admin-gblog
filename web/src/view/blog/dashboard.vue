@@ -74,15 +74,12 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogDashboard' })
-</script>
-
 <script>
 		import * as echarts from 'echarts'
 	import {getDashboard} from "@/api/blog/dashboard";
 
 	export default {
+		name: 'BlogDashboard',
 		components: {},
 		data() {
 			return {

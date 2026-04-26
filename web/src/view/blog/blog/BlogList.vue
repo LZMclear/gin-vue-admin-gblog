@@ -6,7 +6,7 @@
 				<el-input placeholder="请输入标题" v-model="queryInfo.title" :clearable="true" @clear="search" @keyup.enter="search" size="small" style="min-width: 500px">
 					<template #prepend>
 						<el-select v-model="queryInfo.categoryId" placeholder="请选择分类" :clearable="true" @change="search" style="width: 160px">
-							<el-option :label="item.name" :value="item.id" v-for="item in categoryList" :key="item.id"></el-option>
+							<el-option :label="item.categoryName" :value="item.id" v-for="item in categoryList" :key="item.id"></el-option>
 						</el-select>
 					</template>
 					<template #append>
@@ -19,7 +19,7 @@
 		<el-table :data="blogList">
 			<el-table-column label="序号" type="index" width="50"></el-table-column>
 			<el-table-column label="标题" prop="title" show-overflow-tooltip></el-table-column>
-			<el-table-column label="分类" prop="category.name" width="150"></el-table-column>
+			<el-table-column label="分类" prop="category.categoryName" width="150"></el-table-column>
 			<el-table-column label="置顶" width="80">
 				<template v-slot="scope">
 					<el-switch v-model="scope.row.top" @change="blogTopChanged(scope.row)"></el-switch>
@@ -99,14 +99,17 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogArticleList' })
-</script>
-
 <script>
-	import {getDataByQuery, deleteBlogById, updateTop, updateRecommend, updateVisibility} from '@/api/blog/article'
+	import {
+		getDataByQuery,
+		deleteBlogById as removeBlog,
+		updateTop,
+		updateRecommend,
+		updateVisibility
+	} from '@/api/blog/article'
 
 	export default {
+		name: 'BlogArticleList',
 		components: {},
 		data() {
 			return {
@@ -217,7 +220,7 @@ defineOptions({ name: 'BlogArticleList' })
 					type: 'warning',
 					dangerouslyUseHTMLString: true
 				}).then(() => {
-					deleteBlogById(id).then(res => {
+					removeBlog(id).then(res => {
 						this.msgSuccess(res.msg)
 						this.getData()
 					})

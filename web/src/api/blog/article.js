@@ -1,16 +1,12 @@
 import service from '@/utils/request'
 import {
   mapArticleOut,
-  mapCategoryIn,
-  mapTagIn,
   mapToggleValue,
   normalizePageQuery
 } from './_helpers'
 
 const mapArticleIn = (item = {}) => ({
   ...item,
-  category: item.category ? mapCategoryIn(item.category) : item.category,
-  tags: Array.isArray(item.tags) ? item.tags.map(mapTagIn) : item.tags,
   published: item.published ?? item.isPublished,
   recommend: item.recommend ?? item.isRecommend,
   appreciation: item.appreciation ?? item.isAppreciation,
@@ -53,8 +49,8 @@ export function getCategoryAndTag() {
   }).then(res => ({
     ...res,
     data: {
-      categories: (res.data?.categories || []).map(mapCategoryIn),
-      tags: (res.data?.tags || []).map(mapTagIn)
+      categories: res.data?.categories || [],
+      tags: res.data?.tags || []
     }
   }))
 }

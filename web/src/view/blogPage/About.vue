@@ -29,14 +29,11 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogAbout' })
-</script>
-
 <script>
 	import {getAbout, updateAbout} from "@/api/blog/about";
 
 	export default {
+		name: 'BlogAbout',
 		components: {},
 		data() {
 			return {

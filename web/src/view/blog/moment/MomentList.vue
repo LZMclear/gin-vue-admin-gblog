@@ -30,14 +30,15 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogMomentList' })
-</script>
-
 <script>
-	import {getMomentListByQuery, updatePublished, deleteMomentById} from "@/api/blog/moment";
+	import {
+		getMomentListByQuery,
+		updatePublished,
+		deleteMomentById as removeMoment
+	} from "@/api/blog/moment";
 
 	export default {
+		name: 'BlogMomentList',
 		components: {},
 		data() {
 			return {
@@ -78,7 +79,7 @@ defineOptions({ name: 'BlogMomentList' })
 				this.$router.push(`/layout/blog/moment/edit/${id}`)
 			},
 			deleteMomentById(id) {
-				deleteMomentById(id).then(res => {
+				removeMoment(id).then(res => {
 					this.msgSuccess(res.msg)
 					this.getMomentList()
 				})

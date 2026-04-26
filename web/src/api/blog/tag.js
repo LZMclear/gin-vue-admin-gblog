@@ -1,19 +1,19 @@
 import service from '@/utils/request'
-import { asPageResult, mapTagIn, mapTagOut, normalizePageQuery } from './_helpers'
+import { asPageResult, normalizePageQuery } from './_helpers'
 
 export function getData(queryInfo) {
   return service({
     url: '/admin/tags',
     method: 'GET',
     params: normalizePageQuery(queryInfo)
-  }).then(res => asPageResult(res, (res.data || []).map(mapTagIn)))
+  }).then(res => asPageResult(res, res.data || []))
 }
 
 export function addTag(form) {
   return service({
     url: '/admin/tag',
     method: 'POST',
-    data: mapTagOut(form)
+    data: form
   })
 }
 
@@ -21,7 +21,7 @@ export function editTag(form) {
   return service({
     url: '/admin/tag',
     method: 'PUT',
-    data: mapTagOut(form)
+    data: form
   })
 }
 

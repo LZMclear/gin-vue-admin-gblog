@@ -26,14 +26,14 @@
 				<el-col :span="12">
 					<el-form-item label="分类" prop="cate">
 						<el-select v-model="form.cate" placeholder="请选择分类（输入可添加新分类）" :allow-create="true" :filterable="true" style="width: 100%;">
-							<el-option :label="item.name" :value="item.id" v-for="item in categoryList" :key="item.id"></el-option>
+							<el-option :label="item.categoryName" :value="item.id" v-for="item in categoryList" :key="item.id"></el-option>
 						</el-select>
 					</el-form-item>
 				</el-col>
 				<el-col :span="12">
 					<el-form-item label="标签" prop="tagList">
 						<el-select v-model="form.tagList" placeholder="请选择标签（输入可添加新标签）" :allow-create="true" :filterable="true" :multiple="true" style="width: 100%;">
-							<el-option :label="item.name" :value="item.id" v-for="item in tagList" :key="item.id"></el-option>
+							<el-option :label="item.tagName" :value="item.id" v-for="item in tagList" :key="item.id"></el-option>
 						</el-select>
 					</el-form-item>
 				</el-col>
@@ -102,14 +102,16 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogWriteArticle' })
-</script>
-
 <script>
-	import {getCategoryAndTag, saveBlog, getBlogById, updateBlog} from '@/api/blog/article'
+	import {
+		getCategoryAndTag,
+		saveBlog as createBlog,
+		getBlogById,
+		updateBlog
+	} from '@/api/blog/article'
 
 	export default {
+		name: 'BlogWriteArticle',
 		components: {},
 		data() {
 			return {
@@ -201,7 +203,7 @@ defineOptions({ name: 'BlogWriteArticle' })
 								this.$router.push('/layout/blog/list')
 							})
 						} else {
-							saveBlog(this.form).then(res => {
+							createBlog(this.form).then(res => {
 								this.msgSuccess(res.msg)
 								this.$router.push('/layout/blog/list')
 							})

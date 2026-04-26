@@ -111,17 +111,20 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogFriendList' })
-</script>
-
 <script>
 	import {
-		getFriendsByQuery, updatePublished, saveFriend, updateFriend,
-		deleteFriendById, getFriendInfo, updateContent, updateCommentEnabled
+		getFriendsByQuery,
+		updatePublished,
+		saveFriend as createFriend,
+		updateFriend,
+		deleteFriendById as removeFriend,
+		getFriendInfo,
+		updateContent as updateFriendContent,
+		updateCommentEnabled
 	} from "@/api/blog/friend";
 
 	export default {
+		name: 'BlogFriendList',
 		components: {},
 		data() {
 			return {
@@ -170,7 +173,7 @@ defineOptions({ name: 'BlogFriendList' })
 				})
 			},
 			updateContent() {
-				updateContent(this.infoForm.content).then(res => {
+				updateFriendContent(this.infoForm.content).then(res => {
 					this.msgSuccess(res.msg)
 					this.getInfo()
 				})
@@ -200,7 +203,7 @@ defineOptions({ name: 'BlogFriendList' })
 				})
 			},
 			deleteFriendById(id) {
-				deleteFriendById(id).then(res => {
+				removeFriend(id).then(res => {
 					this.getFriendList()
 					this.msgSuccess(res.msg)
 				})
@@ -219,7 +222,7 @@ defineOptions({ name: 'BlogFriendList' })
 			saveFriend() {
 				this.$refs.addFormRef.validate(valid => {
 					if (valid) {
-						saveFriend(this.addForm).then(res => {
+						createFriend(this.addForm).then(res => {
 							this.getFriendList()
 							this.msgSuccess(res.msg)
 							this.addDialogVisible = false

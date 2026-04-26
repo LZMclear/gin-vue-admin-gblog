@@ -93,15 +93,19 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogCommentList' })
-</script>
-
 <script>
-	import {getCommentListByQuery, getBlogList, updatePublished, updateNotice, deleteCommentById, editComment} from '@/api/blog/comment'
+	import {
+		getCommentListByQuery,
+		getBlogList,
+		updatePublished,
+		updateNotice,
+		deleteCommentById as removeComment,
+		editComment as updateComment
+	} from '@/api/blog/comment'
 	import {checkEmail} from "@/utils/reg";
 
 	export default {
+		name: 'BlogCommentList',
 		components: {},
 		data() {
 			return {
@@ -229,7 +233,7 @@ defineOptions({ name: 'BlogCommentList' })
 					type: 'warning',
 					dangerouslyUseHTMLString: true
 				}).then(() => {
-					deleteCommentById(id).then(res => {
+					removeComment(id).then(res => {
 						this.msgSuccess(res.msg)
 						this.getCommentList()
 					})
@@ -260,7 +264,7 @@ defineOptions({ name: 'BlogCommentList' })
 							ip: this.editForm.ip,
 							content: this.editForm.content,
 						}
-						editComment(form).then(res => {
+						updateComment(form).then(res => {
 							this.msgSuccess(res.msg)
 							this.editDialogVisible = false
 							this.getCommentList()

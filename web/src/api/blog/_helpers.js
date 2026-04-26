@@ -27,26 +27,6 @@ export const asPageResult = (res, list = []) => ({
   }
 })
 
-export const mapCategoryIn = (item = {}) => ({
-  ...item,
-  name: item.name ?? item.categoryName
-})
-
-export const mapCategoryOut = (form = {}) => ({
-  ...form,
-  categoryName: form.categoryName ?? form.name
-})
-
-export const mapTagIn = (item = {}) => ({
-  ...item,
-  name: item.name ?? item.tagName
-})
-
-export const mapTagOut = (form = {}) => ({
-  ...form,
-  tagName: form.tagName ?? form.name
-})
-
 export const mapArticleOut = (form = {}) => ({
   ...form,
   isPublished: form.isPublished ?? form.published ?? false,

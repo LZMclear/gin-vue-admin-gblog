@@ -63,15 +63,12 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogExceptionLog' })
-</script>
-
 <script>
 	import {getExceptionLogList, deleteExceptionLogById} from "@/api/blog/exceptionLog";
 	import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 
 	export default {
+		name: 'BlogExceptionLog',
 		components: {DateTimeRangePicker},
 		data() {
 			return {

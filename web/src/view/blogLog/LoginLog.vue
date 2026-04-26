@@ -44,15 +44,12 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogLoginLog' })
-</script>
-
 <script>
 	import {getLoginLogList, deleteLoginLogById} from "@/api/blog/loginLog";
 	import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 
 	export default {
+		name: 'BlogLoginLog',
 		components: {DateTimeRangePicker},
 		data() {
 			return {

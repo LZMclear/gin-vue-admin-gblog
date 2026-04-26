@@ -9,7 +9,7 @@
 
 		<el-table :data="tagList">
 			<el-table-column label="序号" type="index" width="50"></el-table-column>
-			<el-table-column label="名称" prop="name"></el-table-column>
+			<el-table-column label="名称" prop="tagName"></el-table-column>
 			<el-table-column label="颜色">
 				<template v-slot="scope">
 					<span style="float:left;width: 100px;">{{ scope.row.color }}</span>
@@ -36,8 +36,8 @@
 		<el-dialog title="添加标签" width="50%" v-model="addDialogVisible" :close-on-click-modal="false" @close="addDialogClosed">
 			<!--内容主体-->
 			<el-form :model="addForm" :rules="formRules" ref="addFormRef" label-width="80px">
-				<el-form-item label="标签名称" prop="name">
-					<el-input v-model="addForm.name"></el-input>
+				<el-form-item label="标签名称" prop="tagName">
+					<el-input v-model="addForm.tagName"></el-input>
 				</el-form-item>
 				<el-form-item label="标签颜色">
 					<el-select v-model="addForm.color" placeholder="请选择颜色" :clearable="true" style="width: 100%">
@@ -60,8 +60,8 @@
 		<el-dialog title="编辑标签" width="50%" v-model="editDialogVisible" :close-on-click-modal="false" @close="editDialogClosed">
 			<!--内容主体-->
 			<el-form :model="editForm" :rules="formRules" ref="editFormRef" label-width="80px">
-				<el-form-item label="标签名称" prop="name">
-					<el-input v-model="editForm.name"></el-input>
+				<el-form-item label="标签名称" prop="tagName">
+					<el-input v-model="editForm.tagName"></el-input>
 				</el-form-item>
 				<el-form-item label="标签颜色" prop="color">
 					<el-select v-model="editForm.color" placeholder="请选择颜色" :clearable="true" style="width: 100%">
@@ -82,14 +82,16 @@
 	</div>
 </template>
 
-<script setup>
-defineOptions({ name: 'BlogTagList' })
-</script>
-
 <script>
-	import {getData, addTag, editTag, deleteTagById} from '@/api/blog/tag'
+	import {
+		getData as fetchTagData,
+		addTag as createTag,
+		editTag as updateTag,
+		deleteTagById as removeTag
+	} from '@/api/blog/tag'
 
 	export default {
+		name: 'BlogTagList',
 		components: {},
 		data() {
 			return {
@@ -102,12 +104,12 @@ defineOptions({ name: 'BlogTagList' })
 				addDialogVisible: false,
 				editDialogVisible: false,
 				addForm: {
-					name: '',
+					tagName: '',
 					color: ''
 				},
 				editForm: {},
 				formRules: {
-					name: [{required: true, message: '请输入标签名称', trigger: 'blur'}]
+					tagName: [{required: true, message: '请输入标签名称', trigger: 'blur'}]
 				},
 				colors: [
 					{label: '红色', value: 'red'},
@@ -131,7 +133,7 @@ defineOptions({ name: 'BlogTagList' })
 		},
 		methods: {
 			getData() {
-				getData(this.queryInfo).then(res => {
+				fetchTagData(this.queryInfo).then(res => {
 					this.tagList = res.data.list
 					this.total = res.data.total
 				})
@@ -157,7 +159,7 @@ defineOptions({ name: 'BlogTagList' })
 			addTag() {
 				this.$refs.addFormRef.validate(valid => {
 					if (valid) {
-						addTag(this.addForm).then(res => {
+						createTag(this.addForm).then(res => {
 							this.msgSuccess(res.msg)
 							this.addDialogVisible = false
 							this.getData()
@@ -168,7 +170,7 @@ defineOptions({ name: 'BlogTagList' })
 			editTag() {
 				this.$refs.editFormRef.validate(valid => {
 					if (valid) {
-						editTag(this.editForm).then(res => {
+						updateTag(this.editForm).then(res => {
 							this.msgSuccess(res.msg)
 							this.editDialogVisible = false
 							this.getData()
@@ -181,7 +183,7 @@ defineOptions({ name: 'BlogTagList' })
 				this.editDialogVisible = true
 			},
 			deleteTagById(id) {
-				deleteTagById(id).then(res => {
+				removeTag(id).then(res => {
 					this.msgSuccess(res.msg)
 					this.getData()
 				})
