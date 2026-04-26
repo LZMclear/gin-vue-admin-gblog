@@ -4,29 +4,11 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 type AuthApi struct{}
-
-func (a *AuthApi) Login(c *gin.Context) {
-	var req blogReq.BlogLogin
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
-	ip := utils.BlogClientIP(c.Request)
-	ua := c.Request.UserAgent()
-	data, err := authService.Login(req, ip, ua)
-	if err != nil {
-		global.GVA_LOG.Error("blog login failed", zap.Error(err))
-		response.FailWithMessage("登录失败", c)
-		return
-	}
-	response.OkWithData(data, c)
-}
 
 func (a *AuthApi) CheckBlogPassword(c *gin.Context) {
 	var req blogReq.BlogPasswordCheck

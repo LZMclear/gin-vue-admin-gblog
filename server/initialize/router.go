@@ -65,6 +65,7 @@ func Routers() *gin.Engine {
 	PublicGroup := Router.Group(global.GVA_CONFIG.System.RouterPrefix)
 	PrivateGroup := Router.Group(global.GVA_CONFIG.System.RouterPrefix)
 
+	// 需要认证的路由组
 	PrivateGroup.Use(middleware.JWTAuth()).Use(middleware.CasbinHandler())
 
 	{
