@@ -21,7 +21,6 @@ func bizModel() error {
 		blogModel.ScheduleJobLog{},
 		blogModel.SiteSetting{},
 		blogModel.Tag{},
-		blogModel.User{},
 		blogModel.VisitLog{},
 		blogModel.VisitRecord{},
 		blogModel.Visitor{},

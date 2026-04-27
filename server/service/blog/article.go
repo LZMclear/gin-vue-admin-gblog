@@ -182,7 +182,6 @@ func (s *AdminArticleService) Create(info blogReq.ArticleUpsert) error {
 			CategoryID:       categoryID,
 			IsTop:            info.IsTop,
 			Password:         info.Password,
-			UserID:           info.UserID,
 		}
 		if err := tx.Create(&entity).Error; err != nil {
 			return err
@@ -213,7 +212,6 @@ func (s *AdminArticleService) Update(info blogReq.ArticleUpsert) error {
 			"category_id":        categoryID,
 			"is_top":             info.IsTop,
 			"password":           info.Password,
-			"user_id":            info.UserID,
 		}
 		if err := tx.Model(&blogModel.Blog{}).Where("id = ?", info.ID).Updates(updates).Error; err != nil {
 			return err
@@ -363,7 +361,6 @@ func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {
 		ReadTime:       item.ReadTime,
 		Category:       categoryMap[item.CategoryID],
 		Tags:           tagMap[item.ID],
-		UserID:         item.UserID,
 	}
 	if item.Password != nil && strings.TrimSpace(*item.Password) != "" {
 		resp.Privacy = true
@@ -429,7 +426,6 @@ func buildAdminArticleDetail(item blogModel.Blog) blogResp.AdminArticleDetail {
 		Tags:           tagMap[item.ID],
 		Cate:           item.CategoryID,
 		TagList:        tagList,
-		UserID:         item.UserID,
 	}
 	if item.Password != nil {
 		resp.Password = *item.Password
