@@ -8,8 +8,8 @@
 		</el-row>
 
 		<el-table :data="tagList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
-			<el-table-column label="名称" prop="tagName"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
+			<el-table-column label="名称" prop="tagName" width="300"></el-table-column>
 			<el-table-column label="颜色">
 				<template v-slot="scope">
 					<div class="tag-color-view" v-if="scope.row.color">

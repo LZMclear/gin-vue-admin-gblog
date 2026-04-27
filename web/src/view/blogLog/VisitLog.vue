@@ -37,7 +37,7 @@
 					</el-form>
 				</template>
 			</el-table-column>
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="访客标识" width="100" show-overflow-tooltip>
 				<template v-slot="scope">
 					<el-link type="primary" href="" :underline="false" @click.prevent="showThis(scope.row.uuid)">{{ scope.row.uuid }}</el-link>

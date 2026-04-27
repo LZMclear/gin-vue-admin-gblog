@@ -1,7 +1,7 @@
 ﻿<template>
 	<div>
 		<el-table :data="momentList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="内容" prop="content" show-overflow-tooltip></el-table-column>
 			<el-table-column label="发布状态" width="80">
 				<template v-slot="scope">

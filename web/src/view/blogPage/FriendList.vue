@@ -11,7 +11,7 @@
 		</el-form>
 
 		<el-table :data="friendList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="头像" width="80">
 				<template v-slot="scope">
 					<el-avatar shape="square" :size="50" fit="contain" :src="scope.row.avatar"></el-avatar>

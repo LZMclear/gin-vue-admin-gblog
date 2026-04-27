@@ -10,7 +10,7 @@
 		</el-row>
 
 		<el-table :data="commentList" row-key="id" :tree-props="{children: 'replyComments'}" indent="0">
-			<el-table-column label="评论ID" prop="id"></el-table-column>
+			<el-table-column label="评论ID" prop="id" width="70"></el-table-column>
 			<el-table-column label="头像" width="70">
 				<template v-slot="scope">
 					<el-avatar shape="square" :size="50" fit="contain" :src="scope.row.avatar"></el-avatar>
