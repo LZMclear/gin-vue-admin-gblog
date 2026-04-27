@@ -5,7 +5,8 @@ const mapCommentIn = (item = {}) => ({
   ...item,
   published: item.published ?? item.isPublished,
   adminComment: item.adminComment ?? item.isAdminComment,
-  notice: item.notice ?? item.isNotice
+  notice: item.notice ?? item.isNotice,
+  replyComments: item.replyComments || []
 })
 
 const mapCommentOut = (item = {}) => ({

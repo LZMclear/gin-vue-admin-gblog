@@ -161,12 +161,6 @@ func parseCommentAccess(rawToken string) (blogAccessContext, error) {
 
 func (s *CommentService) GetAdminList(info blogReq.CommentAdminSearch) (list []blogModel.Comment, total int64, err error) {
 	db := global.GVA_DB.Model(&blogModel.Comment{})
-	if info.Page != nil {
-		db = db.Where("page = ?", *info.Page)
-	}
-	if info.BlogID != nil {
-		db = db.Where("blog_id = ?", *info.BlogID)
-	}
 	err = db.Count(&total).Error
 	if err != nil {
 		return
@@ -179,7 +173,44 @@ func (s *CommentService) GetAdminList(info blogReq.CommentAdminSearch) (list []b
 	}
 	offset := info.PageSize * (info.PageNum - 1)
 	err = db.Order("create_time desc").Limit(info.PageSize).Offset(offset).Find(&list).Error
+	if err != nil {
+		return
+	}
+	s.fillCommentBlogs(list)
 	return
+}
+
+func (s *CommentService) fillCommentBlogs(list []blogModel.Comment) {
+	blogIDs := make([]uint, 0, len(list))
+	seen := map[uint]struct{}{}
+	for _, item := range list {
+		if item.BlogID == nil || *item.BlogID == 0 {
+			continue
+		}
+		if _, ok := seen[*item.BlogID]; ok {
+			continue
+		}
+		seen[*item.BlogID] = struct{}{}
+		blogIDs = append(blogIDs, *item.BlogID)
+	}
+	if len(blogIDs) == 0 {
+		return
+	}
+
+	var blogs []blogModel.Blog
+	if err := global.GVA_DB.Select("id,title").Where("id IN ?", blogIDs).Find(&blogs).Error; err != nil {
+		return
+	}
+	blogMap := make(map[uint]*blogModel.Blog, len(blogs))
+	for i := range blogs {
+		blogMap[blogs[i].ID] = &blogs[i]
+	}
+	for i := range list {
+		if list[i].BlogID == nil {
+			continue
+		}
+		list[i].Blog = blogMap[*list[i].BlogID]
+	}
 }
 
 func (s *CommentService) UpdatePublished(id uint, published bool) error {
@@ -196,19 +227,13 @@ func (s *CommentService) Delete(id uint) error {
 
 func (s *CommentService) Update(info blogReq.CommentUpdate) error {
 	return global.GVA_DB.Model(&blogModel.Comment{}).Where("id = ?", info.ID).Updates(map[string]interface{}{
-		"nickname":          info.Nickname,
-		"email":             info.Email,
-		"content":           info.Content,
-		"avatar":            info.Avatar,
-		"ip":                info.IP,
-		"is_published":      info.IsPublished,
-		"is_admin_comment":  info.IsAdminComment,
-		"page":              info.Page,
-		"is_notice":         info.IsNotice,
-		"blog_id":           info.BlogID,
-		"parent_comment_id": info.ParentCommentID,
-		"website":           info.Website,
-		"qq":                info.QQ,
+		"nickname": info.Nickname,
+		"email":    info.Email,
+		"content":  info.Content,
+		"avatar":   info.Avatar,
+		"ip":       info.IP,
+		"website":  info.Website,
+		"qq":       info.QQ,
 	}).Error
 }
 
