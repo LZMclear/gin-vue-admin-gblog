@@ -3,17 +3,7 @@ import { mapToggleValue } from './_helpers'
 
 const mapCommentIn = (item = {}) => ({
   ...item,
-  published: item.published ?? item.isPublished,
-  adminComment: item.adminComment ?? item.isAdminComment,
-  notice: item.notice ?? item.isNotice,
   replyComments: item.replyComments || []
-})
-
-const mapCommentOut = (item = {}) => ({
-  ...item,
-  isPublished: item.isPublished ?? item.published ?? false,
-  isAdminComment: item.isAdminComment ?? item.adminComment ?? false,
-  isNotice: item.isNotice ?? item.notice ?? false
 })
 
 const normalizeCommentQuery = (query = {}) => {
@@ -79,6 +69,6 @@ export function editComment(form) {
   return service({
     url: '/admin/comment',
     method: 'PUT',
-    data: mapCommentOut(form)
+    data: form
   })
 }

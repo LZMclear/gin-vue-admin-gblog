@@ -5,7 +5,7 @@
 			<el-table-column label="内容" prop="content" show-overflow-tooltip></el-table-column>
 			<el-table-column label="发布状态" width="80">
 				<template v-slot="scope">
-					<el-switch v-model="scope.row.published" @change="momentPublishedChanged(scope.row)"></el-switch>
+					<el-switch v-model="scope.row.isPublished" @change="momentPublishedChanged(scope.row)"></el-switch>
 				</template>
 			</el-table-column>
 			<el-table-column label="点赞数" prop="likes" width="80"></el-table-column>
@@ -71,7 +71,7 @@
 				this.getMomentList()
 			},
 			momentPublishedChanged(row) {
-				updatePublished(row.id, row.published).then(res => {
+				updatePublished(row.id, row.isPublished).then(res => {
 					this.msgSuccess(res.msg)
 				})
 			},

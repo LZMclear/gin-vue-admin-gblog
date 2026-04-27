@@ -30,8 +30,8 @@
 						</div>
 					</div>
 					<!--分类-->
-					<router-link :to="`/category/${item.category.name}`" class="ui orange large ribbon label">
-						<i class="small folder open icon"></i><span class="m-text-500">{{ item.category.name }}</span>
+					<router-link :to="`/category/${item.category.categoryName}`" class="ui orange large ribbon label">
+						<i class="small folder open icon"></i><span class="m-text-500">{{ item.category.categoryName }}</span>
 					</router-link>
 					<!--文章Markdown描述-->
 					<div class="typo m-padded-tb-small line-numbers match-braces rainbow-braces" v-html="item.description"></div>
@@ -44,7 +44,7 @@
 					<!--标签-->
 					<div class="row m-padded-tb-no">
 						<div class="column m-padding-left-no">
-							<router-link :to="`/tag/${tag.name}`" class="ui tag label m-text-500 m-margin-small" :class="tag.color" v-for="(tag,index) in item.tags" :key="index">{{ tag.name }}</router-link>
+							<router-link :to="`/tag/${tag.tagName}`" class="ui tag label m-text-500 m-margin-small" :class="tag.color" v-for="(tag,index) in item.tags" :key="index">{{ tag.tagName }}</router-link>
 						</div>
 					</div>
 				</div>

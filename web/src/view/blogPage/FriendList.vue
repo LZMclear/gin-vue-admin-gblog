@@ -22,7 +22,7 @@
 			<el-table-column label="站点" prop="website"></el-table-column>
 			<el-table-column label="是否公开" width="100">
 				<template v-slot="scope">
-					<el-switch v-model="scope.row.published" @change="friendPublishedChanged(scope.row)"></el-switch>
+					<el-switch v-model="scope.row.isPublished" @change="friendPublishedChanged(scope.row)"></el-switch>
 				</template>
 			</el-table-column>
 			<el-table-column label="浏览次数" prop="views" width="100"></el-table-column>
@@ -71,8 +71,8 @@
 				<el-form-item label="头像URL" prop="avatar">
 					<el-input v-model="addForm.avatar"></el-input>
 				</el-form-item>
-				<el-form-item label="是否公开" prop="published">
-					<el-switch v-model="addForm.published"></el-switch>
+				<el-form-item label="是否公开" prop="isPublished">
+					<el-switch v-model="addForm.isPublished"></el-switch>
 				</el-form-item>
 			</el-form>
 			<!--底部-->
@@ -98,8 +98,8 @@
 				<el-form-item label="头像URL" prop="avatar">
 					<el-input v-model="editForm.avatar"></el-input>
 				</el-form-item>
-				<el-form-item label="是否公开" prop="published">
-					<el-switch v-model="editForm.published"></el-switch>
+				<el-form-item label="是否公开" prop="isPublished">
+					<el-switch v-model="editForm.isPublished"></el-switch>
 				</el-form-item>
 			</el-form>
 			<!--底部-->
@@ -145,14 +145,14 @@
 					description: '',
 					website: '',
 					avatar: '',
-					published: true
+					isPublished: true
 				},
 				editForm: {
 					nickname: '',
 					description: '',
 					website: '',
 					avatar: '',
-					published: true
+					isPublished: true
 				},
 				formRules: {
 					nickname: [{required: true, message: '请输入昵称', trigger: 'blur'}],
@@ -198,7 +198,7 @@
 				this.getFriendList()
 			},
 			friendPublishedChanged(row) {
-				updatePublished(row.id, row.published).then(res => {
+				updatePublished(row.id, row.isPublished).then(res => {
 					this.msgSuccess(res.msg)
 				})
 			},

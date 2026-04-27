@@ -1,16 +1,6 @@
 import service from '@/utils/request'
 import { mapToggleValue, normalizePageQuery } from './_helpers'
 
-const mapMomentIn = (item = {}) => ({
-  ...item,
-  published: item.published ?? item.isPublished
-})
-
-const mapMomentOut = (item = {}) => ({
-  ...item,
-  isPublished: item.isPublished ?? item.published ?? false
-})
-
 export function getMomentListByQuery(queryInfo) {
   return service({
     url: '/admin/moments',
@@ -20,7 +10,7 @@ export function getMomentListByQuery(queryInfo) {
     ...res,
     data: {
       ...(res.data || {}),
-      list: (res.data?.list || []).map(mapMomentIn)
+      list: res.data?.list || []
     }
   }))
 }
@@ -38,10 +28,7 @@ export function getMomentById(id) {
     url: '/admin/moment',
     method: 'GET',
     params: { id }
-  }).then(res => ({
-    ...res,
-    data: mapMomentIn(res.data)
-  }))
+  })
 }
 
 export function deleteMomentById(id) {
@@ -56,7 +43,7 @@ export function saveMoment(moment) {
   return service({
     url: '/admin/moment',
     method: 'POST',
-    data: mapMomentOut(moment)
+    data: moment
   })
 }
 
@@ -64,6 +51,6 @@ export function updateMoment(moment) {
   return service({
     url: '/admin/moment',
     method: 'PUT',
-    data: mapMomentOut(moment)
+    data: moment
   })
 }

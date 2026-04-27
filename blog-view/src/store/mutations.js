@@ -53,7 +53,7 @@ export default {
 		//保存访客信息，下次评论时自动填充表单
 		window.localStorage.setItem('commentForm', JSON.stringify(commentForm))
 		state.commentForm.content = ''
-		state.commentForm.notice = true
+		state.commentForm.isNotice = true
 	},
 	[RESTORE_COMMENT_FORM](state) {
 		const lastForm = JSON.parse(window.localStorage.getItem('commentForm'))

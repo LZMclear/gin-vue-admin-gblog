@@ -14,23 +14,11 @@ export function getTotalPage(pageData) {
 }
 
 export function normalizeCategory(category) {
-	if (!category) {
-		return category
-	}
-	return {
-		...category,
-		name: category.name || category.categoryName
-	}
+	return category
 }
 
 export function normalizeTag(tag) {
-	if (!tag) {
-		return tag
-	}
-	return {
-		...tag,
-		name: tag.name || tag.tagName
-	}
+	return tag
 }
 
 export function normalizeBlog(blog) {
@@ -39,9 +27,6 @@ export function normalizeBlog(blog) {
 	}
 	return {
 		...blog,
-		top: blog.top !== undefined ? blog.top : blog.isTop,
-		appreciation: blog.appreciation !== undefined ? blog.appreciation : blog.isAppreciation,
-		commentEnabled: blog.commentEnabled !== undefined ? blog.commentEnabled : blog.isCommentEnabled,
 		day: blog.day || getDay(blog.createTime),
 		category: normalizeCategory(blog.category),
 		tags: Array.isArray(blog.tags) ? blog.tags.map(normalizeTag) : []
@@ -110,12 +95,7 @@ export function normalizeFriendPage(data = {}) {
 }
 
 export function normalizeMoments(moments) {
-	return Array.isArray(moments)
-		? moments.map(item => ({
-			...item,
-			published: item.published !== undefined ? item.published : item.isPublished
-		}))
-		: []
+	return Array.isArray(moments) ? moments : []
 }
 
 export function normalizeCommentPage(data = {}) {
@@ -138,7 +118,6 @@ function normalizeComments(list) {
 	list.forEach(item => {
 		const comment = {
 			...item,
-			adminComment: item.adminComment !== undefined ? item.adminComment : item.isAdminComment,
 			replyComments: []
 		}
 		commentMap[comment.id] = comment

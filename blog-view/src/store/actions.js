@@ -58,7 +58,6 @@ export default {
 		form.page = rootState.commentQuery.page
 		form.blogId = rootState.commentQuery.blogId
 		form.parentCommentId = rootState.parentCommentId
-		form.isNotice = form.notice
 		submitComment(token, form).then(res => {
 			if (isSuccess(res)) {
 				Notification({

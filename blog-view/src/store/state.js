@@ -24,7 +24,7 @@ export default {
 		qq: '',
 		email: '',
 		website: '',
-		notice: true
+		isNotice: true
 	},
 	//博客文章渲染完成的标记
 	isBlogRenderComplete: false,

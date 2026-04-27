@@ -12,7 +12,7 @@
 					<i class="idea icon"></i>分类<i class="caret down icon"></i>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item :command="category.name" v-for="(category,index) in categoryList" :key="index">{{ category.name }}</el-dropdown-item>
+					<el-dropdown-item :command="category.categoryName" v-for="(category,index) in categoryList" :key="index">{{ category.categoryName }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 			<router-link to="/archives" class="item" :class="{'m-mobile-hide': mobileHide,'active':$route.name==='archives'}">

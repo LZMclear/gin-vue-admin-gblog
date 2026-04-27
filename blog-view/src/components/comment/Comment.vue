@@ -11,7 +11,7 @@
 			</a>
 			<div class="content">
 				<a class="nickname" :href="comment.website!=''&&comment.website!=null?comment.website:null" target="_blank" rel="external nofollow noopener">{{ comment.nickname }}</a>
-				<div class="ui black left pointing label" v-if="comment.adminComment">{{ $store.state.siteInfo.commentAdminFlag }}</div>
+				<div class="ui black left pointing label" v-if="comment.isAdminComment">{{ $store.state.siteInfo.commentAdminFlag }}</div>
 				<div class="metadata">
 					<strong class="date">{{ comment.createTime | dateFormat('YYYY-MM-DD HH:mm') }}</strong>
 				</div>
@@ -26,7 +26,7 @@
 					</a>
 					<div class="content">
 						<a class="nickname" :href="reply.website!=''&&reply.website!=null?reply.website:null" target="_blank" rel="external nofollow noopener">{{ reply.nickname }}</a>
-						<div class="ui black left pointing label" v-if="reply.adminComment">{{ $store.state.siteInfo.commentAdminFlag }}</div>
+						<div class="ui black left pointing label" v-if="reply.isAdminComment">{{ $store.state.siteInfo.commentAdminFlag }}</div>
 						<div class="metadata">
 							<strong class="date">{{ reply.createTime | dateFormat('YYYY-MM-DD HH:mm') }}</strong>
 						</div>
