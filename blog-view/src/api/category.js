@@ -2,11 +2,11 @@ import axios from '@/plugins/axios'
 
 export function getBlogListByCategoryName(categoryName, pageNum) {
 	return axios({
-		url: 'category',
+		url: 'category/blogs',
 		method: 'GET',
 		params: {
 			categoryName,
-			pageNum
+			page: pageNum || 1
 		}
 	})
 }
