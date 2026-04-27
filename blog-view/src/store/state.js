@@ -20,6 +20,8 @@ export default {
 	commentForm: {
 		content: '',
 		nickname: '',
+		avatar: '',
+		qq: '',
 		email: '',
 		website: '',
 		notice: true

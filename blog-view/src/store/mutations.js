@@ -45,6 +45,8 @@ export default {
 	[RESET_COMMENT_FORM](state) {
 		const commentForm = {
 			nickname: state.commentForm.nickname,
+			avatar: state.commentForm.avatar,
+			qq: state.commentForm.qq,
 			email: state.commentForm.email,
 			website: state.commentForm.website
 		}
@@ -57,6 +59,8 @@ export default {
 		const lastForm = JSON.parse(window.localStorage.getItem('commentForm'))
 		if (lastForm) {
 			state.commentForm.nickname = lastForm.nickname
+			state.commentForm.avatar = lastForm.avatar || ''
+			state.commentForm.qq = lastForm.qq || ''
 			state.commentForm.email = lastForm.email
 			state.commentForm.website = lastForm.website
 		}

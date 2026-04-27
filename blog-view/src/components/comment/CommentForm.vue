@@ -9,37 +9,16 @@
 			<el-input :class="'textarea'" type="textarea" :rows="5" v-model="commentForm.content" placeholder="评论千万条，友善第一条"
 			          maxlength="250" show-word-limit :validate-event="false"></el-input>
 			<div class="el-form-item el-form-item--small emoji">
-				<img src="https://cdn.naccl.top/blog/img/paopao/1.png" @click="showEmojiBox">
+				<button type="button" class="emoji-trigger" @click="showEmojiBox">😀</button>
 				<div class="mask" v-show="emojiShow" @click="hideEmojiBox"></div>
 				<div class="emoji-box" v-show="emojiShow">
 					<div class="emoji-title">
-						<span>{{ activeEmojiTab === 0 ? 'tv_小电视' : activeEmojiTab === 1 ? '阿鲁' : '泡泡' }}</span>
+						<span>Emoji</span>
 					</div>
-					<div class="emoji-wrap" v-show="activeEmojiTab===0">
-						<div class="emoji-list" v-for="(img,index) in tvMapper" :key="index" @click="insertEmoji(img.name)">
-							<img :src="img.src" :title="img.name">
-						</div>
-					</div>
-					<div class="emoji-wrap" v-show="activeEmojiTab===1">
-						<div class="emoji-list" v-for="(img,index) in aruMapper" :key="index" @click="insertEmoji(img.name)">
-							<img :src="img.src" :title="img.name">
-						</div>
-					</div>
-					<div class="emoji-wrap" v-show="activeEmojiTab===2">
-						<div class="emoji-list" v-for="(img,index) in paopaoMapper" :key="index" @click="insertEmoji(img.name)">
-							<img :src="img.src" :title="img.name">
-						</div>
-					</div>
-					<div class="emoji-tabs">
-						<a class="tab-link" :class="{'on':activeEmojiTab===0}" @click="activeEmojiTab=0">
-							<img src="https://cdn.naccl.top/blog/img/tv/1.png">
-						</a>
-						<a class="tab-link" :class="{'on':activeEmojiTab===1}" @click="activeEmojiTab=1">
-							<img src="https://cdn.naccl.top/blog/img/aru/1.png">
-						</a>
-						<a class="tab-link" :class="{'on':activeEmojiTab===2}" @click="activeEmojiTab=2">
-							<img src="https://cdn.naccl.top/blog/img/paopao/1.png">
-						</a>
+					<div class="emoji-wrap">
+						<button type="button" class="emoji-list" v-for="emoji in emojis" :key="emoji" @click="insertEmoji(emoji)">
+							{{ emoji }}
+						</button>
 					</div>
 				</div>
 			</div>
@@ -48,7 +27,7 @@
 			<!-- 评论 -->
 			<el-form-item prop="nickname">
 				<el-popover ref="nicknamePopover" placement="bottom" trigger="focus" content="输入QQ号将自动拉取昵称和头像"></el-popover>
-				<el-input v-model="commentForm.nickname" placeholder="昵称（必填）" :validate-event="false" v-popover:nicknamePopover>
+				<el-input v-model="commentForm.nickname" placeholder="昵称（必填）" :validate-event="false" v-popover:nicknamePopover @blur="fillQQInfo">
 					<i slot="prefix" class="el-input__icon el-icon-user"></i>
 				</el-input>
 			</el-form-item>
@@ -78,9 +57,6 @@
 	import {mapState} from 'vuex'
 	import {checkEmail, checkUrl} from "@/common/reg";
 	import {SET_PARENT_COMMENT_ID} from "@/store/mutations-types";
-	import tvMapper from '@/plugins/tvMapper.json'
-	import aruMapper from '@/plugins/aruMapper.json'
-	import paopaoMapper from '@/plugins/paopaoMapper.json'
 
 	const validateWebsite = (rule, value, callback) => {
 		if (value) {
@@ -111,19 +87,16 @@
 					]
 				},
 				emojiShow: false,
-				activeEmojiTab: 0,
-				tvMapper: [],
-				aruMapper: [],
-				paopaoMapper: [],
+				emojis: [
+					'😀', '😄', '😂', '🤣', '😊', '😍', '😘', '😎',
+					'🤔', '😮', '😅', '😭', '😡', '😴', '🙄', '😇',
+					'👍', '👎', '👏', '🙏', '💪', '🤝', '👌', '✌️',
+					'❤️', '💔', '🔥', '🎉', '✨', '🌹', '🍉', '☕'
+				],
 				textarea: null,
 				start: 0,
 				end: 0,
 			}
-		},
-		created() {
-			this.tvMapper = tvMapper
-			this.aruMapper = aruMapper
-			this.paopaoMapper = paopaoMapper
 		},
 		mounted() {
 			this.textarea = document.querySelector('.el-form textarea')
@@ -150,6 +123,44 @@
 				this.emojiShow = false
 				this.textarea.focus()
 				this.textarea.setSelectionRange(this.start, this.end)
+			},
+			fillQQInfo() {
+				const nickname = String(this.commentForm.nickname || '').trim()
+				if (!nickname) {
+					return
+				}
+				if (!/^[1-9][0-9]{4,11}$/.test(nickname)) {
+					this.commentForm.qq = ''
+					if (!this.commentForm.avatar || this.commentForm.avatar.includes('qlogo.cn')) {
+						this.commentForm.avatar = this.randomCommentAvatar(nickname)
+					}
+					return
+				}
+				const qq = nickname
+				this.commentForm.qq = qq
+				this.commentForm.avatar = `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`
+				if (!this.commentForm.email) {
+					this.commentForm.email = `${qq}@qq.com`
+				}
+				fetch(`https://api.uomg.com/api/qq.info?qq=${qq}`)
+					.then(res => res.json())
+					.then(data => {
+						if (data && data.code === 1 && data.name) {
+							this.commentForm.nickname = data.name
+						}
+						if (data && data.qlogo) {
+							this.commentForm.avatar = data.qlogo
+						}
+					})
+					.catch(() => {})
+			},
+			randomCommentAvatar(seed) {
+				const text = String(seed || '')
+				let hash = 0
+				for (let i = 0; i < text.length; i++) {
+					hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+				}
+				return `/img/comment-avatar/${hash % 6 + 1}.jpg`
 			},
 			postForm() {
 				const adminToken = window.localStorage.getItem('adminToken')
@@ -221,15 +232,22 @@
 		user-select: none;
 	}
 
-	.emoji > img {
+	.emoji-trigger {
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		border: 0;
+		background: transparent;
 		cursor: pointer;
+		font-size: 24px;
+		line-height: 32px;
 		transition: all 0.3s ease-in-out;
 		-webkit-transition: all 0.3s ease-in-out;
 		-moz-transition: all 0.3s ease-in-out;
 		-o-transition: all 0.3s ease-in-out;
 	}
 
-	.emoji > img:hover {
+	.emoji-trigger:hover {
 		transform: rotate(360deg);
 		-webkit-transform: rotate(360deg);
 		-moz-transform: rotate(360deg);
@@ -262,57 +280,30 @@
 
 	.emoji-box .emoji-wrap {
 		margin: 6px 11px 0 11px;
-		height: 185px;
+		max-height: 185px;
 		overflow: auto;
 		word-break: break-word;
 	}
 
 	.emoji-box .emoji-wrap .emoji-list {
-		height: 33px;
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		border: 0;
+		background: transparent;
 		color: #111;
 		border-radius: 4px;
 		transition: background 0.2s;
 		display: inline-block;
 		outline: 0;
 		cursor: pointer;
+		font-size: 22px;
+		line-height: 36px;
+		text-align: center;
 	}
 
 	.emoji-box .emoji-wrap .emoji-list:hover {
 		background-color: #ddd;
-	}
-
-	.emoji-box .emoji-wrap .emoji-list img {
-		margin: 4px;
-		width: 25px;
-		height: 25px;
-	}
-
-	.emoji-box .emoji-tabs {
-		position: relative;
-		height: 36px;
-		overflow: hidden;
-		background-color: #f4f4f4;
-		border-radius: 0 0 4px 4px;
-	}
-
-	.emoji-box .emoji-tabs .tab-link {
-		cursor: pointer;
-		float: left;
-		padding: 7px 18px;
-		width: 22px;
-		height: 22px;
-	}
-
-	.emoji-box .emoji-tabs .tab-link.on {
-		background-color: #fff;
-	}
-
-	.emoji-box .emoji-tabs .tab-link img {
-		width: 22px;
-	}
-
-	.emoji-box .emoji-tabs .tab-link:hover {
-		background: #e7e7e7;
 	}
 
 	.mask {

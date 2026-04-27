@@ -131,6 +131,16 @@ func (s *CommentService) applyCommentDefaults(info *blogReq.CommentCreate, acces
 	info.Nickname = strings.TrimSpace(info.Nickname)
 	info.Email = strings.TrimSpace(info.Email)
 	info.Avatar = strings.TrimSpace(info.Avatar)
+	if info.QQ != nil {
+		qq := strings.TrimSpace(*info.QQ)
+		info.QQ = &qq
+		if info.Avatar == "" && isQQNumber(qq) {
+			info.Avatar = "https://q1.qlogo.cn/g?b=qq&nk=" + qq + "&s=100"
+		}
+	}
+	if info.Avatar == "" {
+		info.Avatar = defaultCommentAvatar(info.Nickname)
+	}
 	if access.IsAdmin {
 		info.IsAdminComment = true
 		info.IsPublished = true
@@ -149,6 +159,26 @@ func (s *CommentService) applyCommentDefaults(info *blogReq.CommentCreate, acces
 	if info.Nickname == "" {
 		info.Nickname = "Visitor"
 	}
+}
+
+func isQQNumber(value string) bool {
+	if len(value) < 5 || len(value) > 12 || value[0] == '0' {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func defaultCommentAvatar(seed string) string {
+	hash := uint32(0)
+	for _, r := range seed {
+		hash = hash*31 + uint32(r)
+	}
+	return "/img/comment-avatar/" + string(rune('1'+hash%6)) + ".jpg"
 }
 
 func parseCommentAccess(rawToken string) (blogAccessContext, error) {
