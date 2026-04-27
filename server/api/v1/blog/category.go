@@ -20,6 +20,35 @@ func (a *CategoryApi) GetCategoryList(c *gin.Context) {
 	response.OkWithData(list, c)
 }
 
+func (a *CategoryApi) GetCategoryBlogList(c *gin.Context) {
+	var req blogReq.CategoryBlogSearch
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	list, total, err := categoryService.GetPublishedBlogListByName(req)
+	if err != nil {
+		global.GVA_LOG.Error("get category blog list failed", zap.Error(err))
+		response.FailWithMessage("鑾峰彇鍒嗙被鏂囩珷鍒楄〃澶辫触", c)
+		return
+	}
+	if req.Page <= 0 {
+		req.Page = req.PageNum
+	}
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	response.OkWithDetailed(response.PageResult{
+		List:     list,
+		Total:    total,
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}, "鑾峰彇鍒嗙被鏂囩珷鍒楄〃鎴愬姛", c)
+}
+
 func (a *CategoryApi) CreateCategory(c *gin.Context) {
 	var req blogReq.CategoryUpsert
 	if err := c.ShouldBindJSON(&req); err != nil {

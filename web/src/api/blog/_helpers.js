@@ -36,16 +36,21 @@ const toNumber = (value, fallback = 0) => {
 }
 
 export const mapArticleOut = (form = {}) => ({
-  ...form,
   id: toNumber(form.id),
+  title: form.title,
+  firstPicture: form.firstPicture,
+  content: form.content,
+  description: form.description,
   words: toNumber(form.words),
   readTime: toNumber(form.readTime),
   views: toNumber(form.views),
-  isPublished: form.isPublished ?? form.published ?? false,
-  isRecommend: form.isRecommend ?? form.recommend ?? false,
-  isAppreciation: form.isAppreciation ?? form.appreciation ?? false,
-  isCommentEnabled: form.isCommentEnabled ?? form.commentEnabled ?? false,
-  isTop: form.isTop ?? form.top ?? false,
+  password: form.password,
+  cate: form.cate,
+  isPublished: form.published,
+  isRecommend: form.recommend,
+  isAppreciation: form.appreciation,
+  isCommentEnabled: form.commentEnabled,
+  isTop: form.top,
   categoryId: toNumber(form.categoryId ?? form.cate),
   tagList: form.tagList ?? []
 })

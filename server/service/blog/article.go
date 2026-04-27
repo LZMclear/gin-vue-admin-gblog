@@ -12,6 +12,7 @@ import (
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"gorm.io/gorm"
 )
 
@@ -58,8 +59,7 @@ func (s *ArticleService) GetPublishedByIDWithToken(id uint, rawToken string) (bl
 		return blog, err
 	}
 	blog.Password = nil
-	_ = global.GVA_DB.Model(&blogModel.Blog{}).Where("id = ?", id).UpdateColumn("views", gorm.Expr("views + 1")).Error
-	blog.Views++
+	blog.Views = s.IncrementViews(id, blog.Views)
 	return blog, nil
 }
 
@@ -182,7 +182,6 @@ func (s *AdminArticleService) Create(info blogReq.ArticleUpsert) error {
 			CategoryID:       categoryID,
 			IsTop:            info.IsTop,
 			Password:         info.Password,
-			UserID:           info.UserID,
 		}
 		if err := tx.Create(&entity).Error; err != nil {
 			return err
@@ -213,7 +212,6 @@ func (s *AdminArticleService) Update(info blogReq.ArticleUpsert) error {
 			"category_id":        categoryID,
 			"is_top":             info.IsTop,
 			"password":           info.Password,
-			"user_id":            info.UserID,
 		}
 		if err := tx.Model(&blogModel.Blog{}).Where("id = ?", info.ID).Updates(updates).Error; err != nil {
 			return err
@@ -325,7 +323,7 @@ func buildBlogInfoItems(blogs []blogModel.Blog) []blogResp.BlogInfoItem {
 		info := blogResp.BlogInfoItem{
 			ID:          item.ID,
 			Title:       item.Title,
-			Description: item.Description,
+			Description: utils.MarkdownToHTML(item.Description),
 			CreateTime:  item.CreateTime,
 			Views:       item.Views,
 			Words:       item.Words,
@@ -349,8 +347,8 @@ func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {
 		ID:             item.ID,
 		Title:          item.Title,
 		FirstPicture:   item.FirstPicture,
-		Content:        item.Content,
-		Description:    item.Description,
+		Content:        utils.MarkdownToHTML(item.Content),
+		Description:    utils.MarkdownToHTML(item.Description),
 		Published:      item.IsPublished,
 		Recommend:      item.IsRecommend,
 		Appreciation:   item.IsAppreciation,
@@ -363,7 +361,6 @@ func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {
 		ReadTime:       item.ReadTime,
 		Category:       categoryMap[item.CategoryID],
 		Tags:           tagMap[item.ID],
-		UserID:         item.UserID,
 	}
 	if item.Password != nil && strings.TrimSpace(*item.Password) != "" {
 		resp.Privacy = true
@@ -429,7 +426,6 @@ func buildAdminArticleDetail(item blogModel.Blog) blogResp.AdminArticleDetail {
 		Tags:           tagMap[item.ID],
 		Cate:           item.CategoryID,
 		TagList:        tagList,
-		UserID:         item.UserID,
 	}
 	if item.Password != nil {
 		resp.Password = *item.Password

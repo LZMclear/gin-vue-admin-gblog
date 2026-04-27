@@ -11,7 +11,7 @@
 		</el-form>
 
 		<el-table :data="visitorList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="访客标识" prop="uuid" show-overflow-tooltip></el-table-column>
 			<el-table-column label="IP" prop="ip" show-overflow-tooltip></el-table-column>
 			<el-table-column label="IP来源" prop="ipSource" show-overflow-tooltip></el-table-column>

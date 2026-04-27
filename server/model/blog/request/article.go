@@ -32,7 +32,6 @@ type ArticleUpsert struct {
 	CategoryID       uint    `json:"categoryId"`
 	IsTop            bool    `json:"isTop"`
 	Password         *string `json:"password"`
-	UserID           *uint   `json:"userId"`
 	Cate             any     `json:"cate"`
 	TagList          []any   `json:"tagList"`
 }

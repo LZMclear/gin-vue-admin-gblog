@@ -20,7 +20,6 @@ type Blog struct {
 	CategoryID       uint      `json:"categoryId" gorm:"column:category_id;not null"`
 	IsTop            bool      `json:"isTop" gorm:"column:is_top;not null"`
 	Password         *string   `json:"password,omitempty" gorm:"column:password;size:255"`
-	UserID           *uint     `json:"userId,omitempty" gorm:"column:user_id"`
 }
 
 func (Blog) TableName() string {

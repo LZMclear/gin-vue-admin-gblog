@@ -7,6 +7,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
+	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
 )
 
 type TagService struct{}
@@ -15,6 +16,41 @@ func (s *TagService) GetList() ([]blogModel.Tag, error) {
 	var list []blogModel.Tag
 	err := global.GVA_DB.Order("id asc").Find(&list).Error
 	return list, err
+}
+
+func (s *TagService) GetPublishedBlogListByName(info blogReq.TagBlogSearch) (list []blogResp.BlogInfoItem, total int64, err error) {
+	tagName := strings.TrimSpace(info.TagName)
+	if tagName == "" {
+		return nil, 0, errors.New("tag name is required")
+	}
+	if info.Page <= 0 {
+		info.Page = info.PageNum
+	}
+	if info.Page <= 0 {
+		info.Page = 1
+	}
+	if info.PageSize <= 0 {
+		info.PageSize = 10
+	}
+
+	db := global.GVA_DB.Model(&blogModel.Blog{}).
+		Joins("JOIN gvto_blog_tag ON gvto_blog_tag.blog_id = gvto_blog.id").
+		Joins("JOIN gvto_tag ON gvto_tag.id = gvto_blog_tag.tag_id").
+		Where("gvto_blog.is_published = ? AND gvto_tag.tag_name = ?", true, tagName)
+	if err = db.Count(&total).Error; err != nil {
+		return
+	}
+
+	var blogs []blogModel.Blog
+	offset := info.PageSize * (info.Page - 1)
+	err = db.Order("gvto_blog.is_top desc, gvto_blog.create_time desc").
+		Limit(info.PageSize).
+		Offset(offset).
+		Find(&blogs).Error
+	if err != nil {
+		return
+	}
+	return buildBlogInfoItems(blogs), total, nil
 }
 
 func (s *TagService) Create(info blogReq.TagUpsert) error {
