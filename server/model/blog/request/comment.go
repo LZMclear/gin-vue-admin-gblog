@@ -8,8 +8,10 @@ type CommentSearch struct {
 }
 
 type CommentAdminSearch struct {
-	PageNum  int `json:"pageNum" form:"pageNum"`
-	PageSize int `json:"pageSize" form:"pageSize"`
+	Page     *int  `json:"page" form:"page"`
+	BlogID   *uint `json:"blogId" form:"blogId"`
+	PageNum  int   `json:"pageNum" form:"pageNum"`
+	PageSize int   `json:"pageSize" form:"pageSize"`
 }
 
 type CommentCreate struct {

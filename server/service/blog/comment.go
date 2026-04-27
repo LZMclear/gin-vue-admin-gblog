@@ -161,6 +161,12 @@ func parseCommentAccess(rawToken string) (blogAccessContext, error) {
 
 func (s *CommentService) GetAdminList(info blogReq.CommentAdminSearch) (list []blogModel.Comment, total int64, err error) {
 	db := global.GVA_DB.Model(&blogModel.Comment{})
+	if info.Page != nil {
+		db = db.Where("page = ?", *info.Page)
+	}
+	if info.BlogID != nil {
+		db = db.Where("blog_id = ?", *info.BlogID)
+	}
 	err = db.Count(&total).Error
 	if err != nil {
 		return

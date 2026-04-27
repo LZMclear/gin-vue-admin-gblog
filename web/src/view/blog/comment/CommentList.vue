@@ -167,7 +167,7 @@
 				})
 			},
 			search() {
-				if (this.pageId === '') {
+				if (this.pageId === '' || this.pageId === null || this.pageId === undefined) {
 					this.queryInfo.page = null
 					this.queryInfo.blogId = null
 				} else if (this.pageId === -1) {
