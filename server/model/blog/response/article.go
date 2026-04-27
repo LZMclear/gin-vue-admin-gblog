@@ -56,7 +56,6 @@ type BlogDetail struct {
 	Privacy        bool                `json:"privacy"`
 	Category       *blogModel.Category `json:"category,omitempty"`
 	Tags           []blogModel.Tag     `json:"tags"`
-	UserID         *uint               `json:"userId,omitempty"`
 }
 
 type AdminArticleListItem struct {
@@ -100,5 +99,4 @@ type AdminArticleDetail struct {
 	Tags           []blogModel.Tag     `json:"tags"`
 	Cate           any                 `json:"cate"`
 	TagList        []any               `json:"tagList"`
-	UserID         *uint               `json:"userId,omitempty"`
 }

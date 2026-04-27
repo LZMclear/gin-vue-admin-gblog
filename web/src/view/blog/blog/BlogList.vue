@@ -17,8 +17,8 @@
 		</el-row>
 
 		<el-table :data="blogList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
-			<el-table-column label="标题" prop="title" show-overflow-tooltip></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
+			<el-table-column label="标题" prop="title" show-overflow-tooltip width="300"></el-table-column>
 			<el-table-column label="分类" prop="category.categoryName" width="150"></el-table-column>
 			<el-table-column label="置顶" width="80">
 				<template v-slot="scope">

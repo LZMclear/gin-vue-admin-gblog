@@ -33,7 +33,7 @@
 					content: '',
 					createTime: null,
 					likes: 0,
-					published: false
+					isPublished: false
 				},
 			}
 		},
@@ -48,8 +48,8 @@
 					this.form = res.data
 				})
 			},
-			submit(published) {
-				this.form.published = published
+			submit(isPublished) {
+				this.form.isPublished = isPublished
 				if (this.$route.params.id) {
 					updateMoment(this.form).then(res => {
 						this.msgSuccess(res.msg)

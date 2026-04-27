@@ -8,8 +8,8 @@
 		</el-row>
 
 		<el-table :data="categoryList">
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
-			<el-table-column label="名称" prop="categoryName"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
+			<el-table-column label="名称" prop="categoryName" width="400"></el-table-column>
 			<el-table-column label="操作">
 				<template v-slot="scope">
 					<el-button type="primary" icon="el-icon-edit" size="small" @click="showEditDialog(scope.row)">编辑</el-button>

@@ -1,16 +1,6 @@
 import service from '@/utils/request'
 import { mapToggleValue, normalizePageQuery } from './_helpers'
 
-const mapFriendIn = (item = {}) => ({
-  ...item,
-  published: item.published ?? item.isPublished
-})
-
-const mapFriendOut = (item = {}) => ({
-  ...item,
-  isPublished: item.isPublished ?? item.published ?? false
-})
-
 export function getFriendsByQuery(queryInfo) {
   return service({
     url: '/admin/friends',
@@ -20,7 +10,7 @@ export function getFriendsByQuery(queryInfo) {
     ...res,
     data: {
       ...(res.data || {}),
-      list: (res.data?.list || []).map(mapFriendIn)
+      list: res.data?.list || []
     }
   }))
 }
@@ -37,7 +27,7 @@ export function saveFriend(form) {
   return service({
     url: '/admin/friend',
     method: 'POST',
-    data: mapFriendOut(form)
+    data: form
   })
 }
 
@@ -45,7 +35,7 @@ export function updateFriend(form) {
   return service({
     url: '/admin/friend',
     method: 'PUT',
-    data: mapFriendOut(form)
+    data: form
   })
 }
 

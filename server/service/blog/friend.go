@@ -7,6 +7,7 @@ import (
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +22,7 @@ func (s *FriendService) GetPublicPage() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	info.Content = utils.MarkdownToHTML(info.Content)
 	return map[string]interface{}{
 		"friendList": friendList,
 		"friendInfo": info,
