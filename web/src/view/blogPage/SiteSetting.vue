@@ -7,7 +7,7 @@
 						<span>基础设置</span>
 					</template>
 					<el-form label-position="right" label-width="100px">
-						<el-form-item :label="item.nameZh" v-for="item in typeMap.type1" :key="item.id">
+						<el-form-item :label="item.nameZh" v-for="item in typeMap.type1" :key="item.id || item.key || item.nameEn">
 							<el-input v-model="item.value" size="small"></el-input>
 						</el-form-item>
 					</el-form>
@@ -19,7 +19,7 @@
 						<span>资料卡</span>
 					</template>
 					<el-form label-position="right" label-width="100px">
-						<el-form-item :label="item.nameZh" v-for="item in typeMap.type2" :key="item.id">
+						<el-form-item :label="item.nameZh" v-for="item in typeMap.type2" :key="item.id || item.key || item.nameEn">
 							<div v-if="item.nameEn=='favorite'">
 								<el-col :span="20">
 									<el-input v-model="item.value" size="small"></el-input>
@@ -43,7 +43,7 @@
 				<template #header>
 					<span>页脚徽标</span>
 				</template>
-				<el-form :inline="true" v-for="badge in typeMap.type3" :key="badge.id">
+				<el-form :inline="true" v-for="(badge, index) in typeMap.type3" :key="badge.id || badge.key || index">
 					<el-form-item label="title">
 						<el-input v-model="badge.value.title" size="small"></el-input>
 					</el-form-item>
