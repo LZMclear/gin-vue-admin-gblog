@@ -9,8 +9,6 @@
 ├── server      # 后端服务，基于 Gin + GORM + gin-vue-admin
 ├── web         # 后台管理端，基于 Vue 3 + Vite + Element Plus
 ├── blog-view   # 博客前台展示端，基于 Vue 2 + Vue CLI + Element UI
-├── blog-api    # 原博客后端实现，当前主要作为迁移参考
-├── blog-cms    # 原博客后台实现，当前主要作为迁移参考
 ├── docs        # 项目文档与静态说明资源
 └── deploy      # Docker、docker-compose、Kubernetes 部署文件
 ```
