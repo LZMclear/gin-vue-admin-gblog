@@ -37,7 +37,6 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	blogRouter.InitVisitLogRouter(privateGroup)
 	blogRouter.InitVisitorRouter(privateGroup)
 	blogRouter.InitExceptionLogRouter(privateGroup)
-	blogRouter.InitLoginLogRouter(privateGroup)
 	blogRouter.InitOperationLogRouter(privateGroup)
 	blogRouter.InitTelegramRouter(publicGroup)
 

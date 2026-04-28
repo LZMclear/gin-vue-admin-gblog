@@ -20,6 +20,35 @@ func (a *TagApi) GetTagList(c *gin.Context) {
 	response.OkWithData(list, c)
 }
 
+func (a *TagApi) GetTagBlogList(c *gin.Context) {
+	var req blogReq.TagBlogSearch
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	list, total, err := tagService.GetPublishedBlogListByName(req)
+	if err != nil {
+		global.GVA_LOG.Error("get tag blog list failed", zap.Error(err))
+		response.FailWithMessage("鑾峰彇鏍囩鏂囩珷鍒楄〃澶辫触", c)
+		return
+	}
+	if req.Page <= 0 {
+		req.Page = req.PageNum
+	}
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	response.OkWithDetailed(response.PageResult{
+		List:     list,
+		Total:    total,
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}, "鑾峰彇鏍囩鏂囩珷鍒楄〃鎴愬姛", c)
+}
+
 func (a *TagApi) CreateTag(c *gin.Context) {
 	var req blogReq.TagUpsert
 	if err := c.ShouldBindJSON(&req); err != nil {

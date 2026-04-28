@@ -6,6 +6,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +26,9 @@ func (s *MomentService) GetPublicList(info blogReq.PageQuery) (list []blogModel.
 	}
 	offset := info.PageSize * (info.Page - 1)
 	err = db.Order("create_time desc").Limit(info.PageSize).Offset(offset).Find(&list).Error
+	if err == nil {
+		renderMomentListContent(list)
+	}
 	return
 }
 
@@ -86,4 +90,10 @@ func (s *MomentService) Delete(id uint) error {
 
 func (s *MomentService) UpdatePublished(id uint, published bool) error {
 	return global.GVA_DB.Model(&blogModel.Moment{}).Where("id = ?", id).Update("is_published", published).Error
+}
+
+func renderMomentListContent(list []blogModel.Moment) {
+	for i := range list {
+		list[i].Content = utils.MarkdownToHTML(list[i].Content)
+	}
 }

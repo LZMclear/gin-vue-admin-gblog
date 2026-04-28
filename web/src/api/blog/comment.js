@@ -1,25 +1,30 @@
 import service from '@/utils/request'
-import { mapToggleValue, normalizePageQuery } from './_helpers'
+import { mapToggleValue } from './_helpers'
 
 const mapCommentIn = (item = {}) => ({
   ...item,
-  published: item.published ?? item.isPublished,
-  adminComment: item.adminComment ?? item.isAdminComment,
-  notice: item.notice ?? item.isNotice
+  replyComments: item.replyComments || []
 })
 
-const mapCommentOut = (item = {}) => ({
-  ...item,
-  isPublished: item.isPublished ?? item.published ?? false,
-  isAdminComment: item.isAdminComment ?? item.adminComment ?? false,
-  isNotice: item.isNotice ?? item.notice ?? false
-})
+const normalizeCommentQuery = (query = {}) => {
+  const normalized = {
+    pageNum: query.pageNum ?? 1,
+    pageSize: query.pageSize ?? 10
+  }
+  if (query.page !== null && query.page !== undefined && query.page !== '') {
+    normalized.page = query.page
+  }
+  if (query.blogId !== null && query.blogId !== undefined && query.blogId !== '') {
+    normalized.blogId = query.blogId
+  }
+  return normalized
+}
 
 export function getCommentListByQuery(queryInfo) {
   return service({
     url: '/admin/comments',
     method: 'GET',
-    params: normalizePageQuery(queryInfo)
+    params: normalizeCommentQuery(queryInfo)
   }).then(res => ({
     ...res,
     data: {
@@ -64,6 +69,6 @@ export function editComment(form) {
   return service({
     url: '/admin/comment',
     method: 'PUT',
-    data: mapCommentOut(form)
+    data: form
   })
 }

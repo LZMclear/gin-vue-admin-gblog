@@ -131,6 +131,16 @@ func (s *CommentService) applyCommentDefaults(info *blogReq.CommentCreate, acces
 	info.Nickname = strings.TrimSpace(info.Nickname)
 	info.Email = strings.TrimSpace(info.Email)
 	info.Avatar = strings.TrimSpace(info.Avatar)
+	if info.QQ != nil {
+		qq := strings.TrimSpace(*info.QQ)
+		info.QQ = &qq
+		if info.Avatar == "" && isQQNumber(qq) {
+			info.Avatar = "https://q1.qlogo.cn/g?b=qq&nk=" + qq + "&s=100"
+		}
+	}
+	if info.Avatar == "" {
+		info.Avatar = defaultCommentAvatar(info.Nickname)
+	}
 	if access.IsAdmin {
 		info.IsAdminComment = true
 		info.IsPublished = true
@@ -149,6 +159,26 @@ func (s *CommentService) applyCommentDefaults(info *blogReq.CommentCreate, acces
 	if info.Nickname == "" {
 		info.Nickname = "Visitor"
 	}
+}
+
+func isQQNumber(value string) bool {
+	if len(value) < 5 || len(value) > 12 || value[0] == '0' {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func defaultCommentAvatar(seed string) string {
+	hash := uint32(0)
+	for _, r := range seed {
+		hash = hash*31 + uint32(r)
+	}
+	return "/img/comment-avatar/" + string(rune('1'+hash%6)) + ".jpg"
 }
 
 func parseCommentAccess(rawToken string) (blogAccessContext, error) {
@@ -179,7 +209,44 @@ func (s *CommentService) GetAdminList(info blogReq.CommentAdminSearch) (list []b
 	}
 	offset := info.PageSize * (info.PageNum - 1)
 	err = db.Order("create_time desc").Limit(info.PageSize).Offset(offset).Find(&list).Error
+	if err != nil {
+		return
+	}
+	s.fillCommentBlogs(list)
 	return
+}
+
+func (s *CommentService) fillCommentBlogs(list []blogModel.Comment) {
+	blogIDs := make([]uint, 0, len(list))
+	seen := map[uint]struct{}{}
+	for _, item := range list {
+		if item.BlogID == nil || *item.BlogID == 0 {
+			continue
+		}
+		if _, ok := seen[*item.BlogID]; ok {
+			continue
+		}
+		seen[*item.BlogID] = struct{}{}
+		blogIDs = append(blogIDs, *item.BlogID)
+	}
+	if len(blogIDs) == 0 {
+		return
+	}
+
+	var blogs []blogModel.Blog
+	if err := global.GVA_DB.Select("id,title").Where("id IN ?", blogIDs).Find(&blogs).Error; err != nil {
+		return
+	}
+	blogMap := make(map[uint]*blogModel.Blog, len(blogs))
+	for i := range blogs {
+		blogMap[blogs[i].ID] = &blogs[i]
+	}
+	for i := range list {
+		if list[i].BlogID == nil {
+			continue
+		}
+		list[i].Blog = blogMap[*list[i].BlogID]
+	}
 }
 
 func (s *CommentService) UpdatePublished(id uint, published bool) error {
@@ -196,19 +263,13 @@ func (s *CommentService) Delete(id uint) error {
 
 func (s *CommentService) Update(info blogReq.CommentUpdate) error {
 	return global.GVA_DB.Model(&blogModel.Comment{}).Where("id = ?", info.ID).Updates(map[string]interface{}{
-		"nickname":          info.Nickname,
-		"email":             info.Email,
-		"content":           info.Content,
-		"avatar":            info.Avatar,
-		"ip":                info.IP,
-		"is_published":      info.IsPublished,
-		"is_admin_comment":  info.IsAdminComment,
-		"page":              info.Page,
-		"is_notice":         info.IsNotice,
-		"blog_id":           info.BlogID,
-		"parent_comment_id": info.ParentCommentID,
-		"website":           info.Website,
-		"qq":                info.QQ,
+		"nickname": info.Nickname,
+		"email":    info.Email,
+		"content":  info.Content,
+		"avatar":   info.Avatar,
+		"ip":       info.IP,
+		"website":  info.Website,
+		"qq":       info.QQ,
 	}).Error
 }
 

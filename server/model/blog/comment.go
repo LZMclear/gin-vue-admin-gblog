@@ -18,6 +18,7 @@ type Comment struct {
 	ParentCommentID int64      `json:"parentCommentId" gorm:"column:parent_comment_id;not null"`
 	Website         *string    `json:"website,omitempty" gorm:"column:website;size:255"`
 	QQ              *string    `json:"qq,omitempty" gorm:"column:qq;size:255"`
+	Blog            *Blog      `json:"blog,omitempty" gorm:"-"`
 }
 
 func (Comment) TableName() string {

@@ -10,7 +10,7 @@
 		</el-row>
 
 		<el-table :data="commentList" row-key="id" :tree-props="{children: 'replyComments'}" indent="0">
-			<el-table-column label="评论ID" prop="id"></el-table-column>
+			<el-table-column label="评论ID" prop="id" width="70"></el-table-column>
 			<el-table-column label="头像" width="70">
 				<template v-slot="scope">
 					<el-avatar shape="square" :size="50" fit="contain" :src="scope.row.avatar"></el-avatar>
@@ -19,7 +19,7 @@
 			<el-table-column label="昵称" prop="nickname">
 				<template v-slot="scope">
 					{{ scope.row.nickname }}
-					<el-tag v-if="scope.row.adminComment" size="small" effect="dark" style="margin-left: 5px">我</el-tag>
+					<el-tag v-if="scope.row.isAdminComment" size="small" effect="dark" style="margin-left: 5px">我</el-tag>
 				</template>
 			</el-table-column>
 			<el-table-column label="邮箱" prop="email" show-overflow-tooltip></el-table-column>
@@ -29,7 +29,8 @@
 			<el-table-column label="QQ" prop="qq" width="115"></el-table-column>
 			<el-table-column label="所在页面" show-overflow-tooltip>
 				<template v-slot="scope">
-					<el-link type="success" :href="`/blog/${scope.row.blog.id}`" target="_blank" v-if="scope.row.page===0">{{ scope.row.blog.title }}</el-link>
+					<el-link type="success" :href="`/blog/${scope.row.blog.id}`" target="_blank" v-if="scope.row.page===0 && scope.row.blog">{{ scope.row.blog.title }}</el-link>
+					<span v-else-if="scope.row.page===0">文章已删除或未关联</span>
 					<el-link type="success" :href="'/about'" target="_blank" v-else-if="scope.row.page===1">关于我</el-link>
 					<el-link type="success" :href="'/friends'" target="_blank" v-else-if="scope.row.page===2">友人帐</el-link>
 				</template>
@@ -39,12 +40,12 @@
 			</el-table-column>
 			<el-table-column label="是否公开" width="80">
 				<template v-slot="scope">
-					<el-switch v-model="scope.row.published" @change="commentPublishedChanged(scope.row)"></el-switch>
+					<el-switch v-model="scope.row.isPublished" @change="commentPublishedChanged(scope.row)"></el-switch>
 				</template>
 			</el-table-column>
 			<el-table-column label="邮件提醒" width="80">
 				<template v-slot="scope">
-					<el-switch v-model="scope.row.notice" @change="commentNoticeChanged(scope.row)"></el-switch>
+					<el-switch v-model="scope.row.isNotice" @change="commentNoticeChanged(scope.row)"></el-switch>
 				</template>
 			</el-table-column>
 			<el-table-column label="操作" width="200">
@@ -166,7 +167,7 @@
 				})
 			},
 			search() {
-				if (this.pageId === '') {
+				if (this.pageId === '' || this.pageId === null || this.pageId === undefined) {
 					this.queryInfo.page = null
 					this.queryInfo.blogId = null
 				} else if (this.pageId === -1) {
@@ -195,8 +196,8 @@
 			},
 			//切换评论公开状态（如果切换成隐藏，则该评论的所有子评论都修改为同样的隐藏状态）
 			commentPublishedChanged(row) {
-				if (row.published) {
-					updatePublished(row.id, row.published).then(res => {
+				if (row.isPublished) {
+					updatePublished(row.id, row.isPublished).then(res => {
 						this.msgSuccess(res.msg)
 					})
 				} else {
@@ -205,10 +206,10 @@
 					replyCommentList.push(row)
 					this.getAllReplyCommentList(row, replyCommentList)
 
-					updatePublished(row.id, row.published).then(res => {
+					updatePublished(row.id, row.isPublished).then(res => {
 						this.msgSuccess(res.msg)
 						replyCommentList.forEach(comment => {
-							comment.published = row.published
+							comment.isPublished = row.isPublished
 						})
 					})
 				}
@@ -222,7 +223,7 @@
 			},
 			//切换评论邮件提醒状态
 			commentNoticeChanged(row) {
-				updateNotice(row.id, row.notice).then(res => {
+				updateNotice(row.id, row.isNotice).then(res => {
 					this.msgSuccess(res.msg);
 				})
 			},

@@ -75,7 +75,45 @@
 
 <script>
 	import {getSiteSettingData, update} from "@/api/blog/siteSetting";
-	import _ from 'lodash'
+
+	const emptyTypeMap = () => ({
+		type1: [],
+		type2: [],
+		type3: []
+	})
+
+	const parseBadgeValue = (value) => {
+		const fallback = {
+			color: "",
+			subject: "",
+			title: "",
+			url: "",
+			value: ""
+		}
+
+		if (!value) {
+			return fallback
+		}
+
+		if (typeof value === 'object') {
+			return {
+				...fallback,
+				...value
+			}
+		}
+
+		try {
+			return {
+				...fallback,
+				...JSON.parse(value)
+			}
+		} catch (e) {
+			console.warn('Invalid badge site setting value:', value, e)
+			return fallback
+		}
+	}
+
+	const cloneTypeMap = (typeMap) => JSON.parse(JSON.stringify(typeMap))
 
 	export default {
 		name: 'BlogSiteSetting',
@@ -83,7 +121,7 @@
 		data() {
 			return {
 				deleteIds: [],
-				typeMap: {},
+				typeMap: emptyTypeMap(),
 			}
 		},
 		created() {
@@ -92,10 +130,23 @@
 		methods: {
 			getData() {
 				getSiteSettingData().then(res => {
-					this.typeMap = res.data
-					res.data.type3.forEach(item => {
-						item.value = JSON.parse(item.value)
+					const data = res.data || {}
+					const nextTypeMap = {
+						type1: Array.isArray(data.type1) ? data.type1 : [],
+						type2: Array.isArray(data.type2) ? data.type2 : [],
+						type3: Array.isArray(data.type3) ? data.type3 : []
+					}
+
+					nextTypeMap.type1.forEach(item => {
+						item.value = item.value || ''
 					})
+					nextTypeMap.type2.forEach(item => {
+						item.value = item.value || ''
+					})
+					nextTypeMap.type3.forEach(item => {
+						item.value = parseBadgeValue(item.value)
+					})
+					this.typeMap = nextTypeMap
 				})
 			},
 			addFavorite() {
@@ -161,7 +212,7 @@
 				}
 			},
 			submit() {
-				const result = _.cloneDeep(this.typeMap)
+				const result = cloneTypeMap(this.typeMap)
 				result.type3.forEach(item => {
 					item.value = JSON.stringify(item.value)
 				})

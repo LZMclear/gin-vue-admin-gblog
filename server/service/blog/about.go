@@ -5,6 +5,7 @@ import (
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 )
 
 type AboutService struct{}
@@ -13,6 +14,19 @@ func (s *AboutService) GetList() ([]blogModel.About, error) {
 	var list []blogModel.About
 	err := global.GVA_DB.Order("id asc").Find(&list).Error
 	return list, err
+}
+
+func (s *AboutService) GetPublicList() ([]blogModel.About, error) {
+	list, err := s.GetList()
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if list[i].NameEn == "content" {
+			list[i].Value = utils.MarkdownToHTML(list[i].Value)
+		}
+	}
+	return list, nil
 }
 
 func (s *AboutService) UpdateValues(values map[string]string) error {

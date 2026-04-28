@@ -23,7 +23,7 @@
 					</el-form>
 				</template>
 			</el-table-column>
-			<el-table-column label="序号" type="index" width="50"></el-table-column>
+			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="请求方式" prop="method" width="80"></el-table-column>
 			<el-table-column label="描述" prop="description"></el-table-column>
 			<el-table-column label="IP" prop="ip"></el-table-column>

@@ -5,15 +5,6 @@ import {
   normalizePageQuery
 } from './_helpers'
 
-const mapArticleIn = (item = {}) => ({
-  ...item,
-  published: item.published ?? item.isPublished,
-  recommend: item.recommend ?? item.isRecommend,
-  appreciation: item.appreciation ?? item.isAppreciation,
-  commentEnabled: item.commentEnabled ?? item.isCommentEnabled,
-  top: item.top ?? item.isTop
-})
-
 export function getDataByQuery(queryInfo) {
   return Promise.all([
     service({
@@ -27,7 +18,7 @@ export function getDataByQuery(queryInfo) {
     data: {
       blogs: {
         ...(res.data || {}),
-        list: (res.data?.list || []).map(mapArticleIn)
+        list: res.data?.list || []
       },
       categories: metaRes.data.categories
     }
@@ -99,10 +90,7 @@ export function getBlogById(id) {
     url: '/admin/blog',
     method: 'GET',
     params: { id }
-  }).then(res => ({
-    ...res,
-    data: mapArticleIn(res.data)
-  }))
+  })
 }
 
 export function updateBlog(blog) {

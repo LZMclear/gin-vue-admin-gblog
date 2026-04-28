@@ -18,7 +18,6 @@ type ApiGroup struct {
 	VisitLogApi     VisitLogApi
 	VisitorApi      VisitorApi
 	ExceptionLogApi ExceptionLogApi
-	LoginLogApi     LoginLogApi
 	OperationLogApi OperationLogApi
 	TelegramApi     TelegramApi
 	AuthApi         AuthApi
@@ -40,7 +39,6 @@ var (
 	visitLogService     = service.ServiceGroupApp.BlogServiceGroup.VisitLogService
 	visitorService      = service.ServiceGroupApp.BlogServiceGroup.VisitorService
 	exceptionLogService = service.ServiceGroupApp.BlogServiceGroup.ExceptionLogService
-	loginLogService     = service.ServiceGroupApp.BlogServiceGroup.LoginLogService
 	operationLogService = service.ServiceGroupApp.BlogServiceGroup.OperationLogService
 	telegramService     = service.ServiceGroupApp.BlogServiceGroup.TelegramService
 	authService         = service.ServiceGroupApp.BlogServiceGroup.AuthService

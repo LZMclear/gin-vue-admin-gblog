@@ -16,7 +16,6 @@ type ServiceGroup struct {
 	VisitLogService     VisitLogService
 	VisitorService      VisitorService
 	ExceptionLogService ExceptionLogService
-	LoginLogService     LoginLogCompatService
 	OperationLogService OperationLogCompatService
 	TelegramService     TelegramService
 	AuthService         AuthService

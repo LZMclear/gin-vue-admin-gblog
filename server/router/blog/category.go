@@ -12,6 +12,7 @@ func (r *CategoryRouter) InitCategoryRouter(Router *gin.RouterGroup, PublicRoute
 	adminRouter := Router.Group("admin")
 	{
 		PublicRouter.Group("").Use(blogmw.VisitRecord("category")).GET("category", categoryApi.GetCategoryList)
+		PublicRouter.Group("").Use(blogmw.VisitRecord("category")).GET("category/blogs", categoryApi.GetCategoryBlogList)
 	}
 	{
 		adminRouter.GET("categories", categoryApi.GetCategoryList)

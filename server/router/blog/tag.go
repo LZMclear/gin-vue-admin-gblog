@@ -12,6 +12,7 @@ func (r *TagRouter) InitTagRouter(Router *gin.RouterGroup, PublicRouter *gin.Rou
 	adminRouter := Router.Group("admin")
 	{
 		PublicRouter.Group("").Use(blogmw.VisitRecord("tag")).GET("tag", tagApi.GetTagList)
+		PublicRouter.Group("").Use(blogmw.VisitRecord("tag")).GET("tag/blogs", tagApi.GetTagBlogList)
 	}
 	{
 		adminRouter.GET("tags", tagApi.GetTagList)
