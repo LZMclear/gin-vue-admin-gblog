@@ -2,15 +2,15 @@
 
 # jwt configuration
 jwt:
-    signing-key: qmPlus
+    signing-key: gvto
     expires-time: 7d
     buffer-time: 1d
-    issuer: qmPlus
+    issuer: gvto
 # zap logger configuration
 zap:
     level: info
     format: console
-    prefix: "[github.com/flipped-aurora/gin-vue-admin/server]"
+    prefix: "[github.com/LZMclear/gin-vue-admin-gblog/server]"
     director: log
     show-line: true
     encode-level: LowercaseColorLevelEncoder
@@ -23,25 +23,25 @@ redis:
     #是否使用redis集群模式
     useCluster: false
     #使用集群模式addr和db默认无效
-    addr: 177.7.0.14:6379
+    addr: host.docker.internal:6379
     password: ""
     db: 0
     clusterAddrs:
-        - "177.7.0.14:7000"
-        - "177.7.0.15:7001"
-        - "177.7.0.13:7002"
+        - "host.docker.internal:7000"
+        - "host.docker.internal:7001"
+        - "host.docker.internal:7002"
 
 # redis-list configuration
 redis-list:
     - name: cache           # 数据库的名称,注意: name 需要在 redis-list 中唯一
       useCluster: false     # 是否使用redis集群模式
-      addr: 177.7.0.14:6379  # 使用集群模式addr和db默认无效
+      addr: host.docker.internal:6379  # 使用集群模式addr和db默认无效
       password: ""
       db: 0
       clusterAddrs:
-          - "177.7.0.14:7000"
-          - "177.7.0.15:7001"
-          - "177.7.0.13:7002"
+          - "host.docker.internal:7000"
+          - "host.docker.internal:7001"
+          - "host.docker.internal:7002"
 
 # mongo configuration
 mongo:
@@ -57,14 +57,14 @@ mongo:
     connect-timeout-ms: 0
     is-zap: false
     hosts:
-        - host: ''
-          port: ''
+        - host: host.docker.internal
+          port: 27017
 
 # email configuration
 email:
-    to: xxx@qq.com
+    to: lz13526112262@163.com
     port: 465
-    from: xxx@163.com
+    from: lz13526112262@163.com
     host: smtp.163.com
     is-ssl: true
     secret: xxx
@@ -181,7 +181,7 @@ autocode:
     web: web/src
     root: "" # root 自动适配项目根目录, 请不要手动配置,他会在项目加载的时候识别出根路径
     server: server
-    module: 'github.com/flipped-aurora/gin-vue-admin/server'
+    module: 'github.com/LZMclear/gin-vue-admin-gblog/server'
     ai-path: ""  # AI服务路径
 
 # qiniu configuration (请自行七牛申请对应的 公钥 私钥 bucket 和 域名地址)
@@ -220,7 +220,7 @@ tencent-cos:
     secret-id: your-secret-id
     secret-key: your-secret-key
     base-url: https://gin.vue.admin
-    path-prefix: github.com/flipped-aurora/gin-vue-admin/server
+    path-prefix: github.com/LZMclear/gin-vue-admin-gblog/server
 
 # aws s3 configuration (minio compatible)
 aws-s3:
@@ -232,7 +232,7 @@ aws-s3:
     secret-id: your-secret-id
     secret-key: your-secret-key
     base-url: https://gin.vue.admin
-    path-prefix: github.com/flipped-aurora/gin-vue-admin/server
+    path-prefix: github.com/LZMclear/gin-vue-admin-gblog/server
 
 # cloudflare r2 configuration
 cloudflare-r2:
