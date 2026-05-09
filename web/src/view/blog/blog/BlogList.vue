@@ -211,7 +211,7 @@
 				this.getData()
 			},
 			goBlogEditPage(id) {
-				this.$router.push(`/layout/blog/edit/${id}`)
+				this.$router.push(`/layout/gblog/edit/${id}`)
 			},
 			deleteBlogById(id) {
 				this.$confirm('此操作将永久删除该博客<strong style="color: red">及其所有评论</strong>，是否删除?<br>建议将博客置为<strong style="color: red">私密</strong>状态！', '提示', {

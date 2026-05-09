@@ -76,7 +76,7 @@
 				})
 			},
 			goEditMomentPage(id) {
-				this.$router.push(`/layout/blog/moment/edit/${id}`)
+				this.$router.push(`/layout/gblog/moment/edit/${id}`)
 			},
 			deleteMomentById(id) {
 				removeMoment(id).then(res => {

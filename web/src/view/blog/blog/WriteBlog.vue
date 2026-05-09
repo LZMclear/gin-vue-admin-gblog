@@ -298,12 +298,12 @@
               this.form.tags = null
               updateBlog(this.form).then(res => {
                 this.msgSuccess(res.msg)
-                this.$router.push('/layout/blog/list')
+                this.$router.push('/layout/gblog/list')
               })
             } else {
               createBlog(this.form).then(res => {
                 this.msgSuccess(res.msg)
-                this.$router.push('/layout/blog/list')
+                this.$router.push('/layout/gblog/list')
               })
             }
           } else {
