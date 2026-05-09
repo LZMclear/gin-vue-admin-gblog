@@ -75,8 +75,12 @@
 </template>
 
 <script>
-		import * as echarts from 'echarts'
+	import * as echarts from 'echarts'
 	import {getDashboard} from "@/api/blog/dashboard";
+	import chinaMap from '@/assets/map/china.json'
+	import geoCoordMap from '@/assets/map/city2coord.json'
+
+	echarts.registerMap('china', chinaMap)
 
 	export default {
 		name: 'BlogDashboard',
@@ -376,16 +380,10 @@
 					this.tagOption.legend.data = res.data.tag.legend
 					this.tagOption.series[0].data = res.data.tag.series
 					this.initTagEcharts()
-					//渲染访客城市数据
-					const cityVisitor = res.data.cityVisitor || []
-					this.mapOption = {
-						title: { text: '访客城市 Top', x: 'center' },
-						tooltip: { trigger: 'axis' },
-						grid: { left: 40, right: 20, top: 60, bottom: 40 },
-						xAxis: { type: 'category', data: cityVisitor.map(item => item.city) },
-						yAxis: { type: 'value' },
-						series: [{ name: '访客数', type: 'bar', data: cityVisitor.map(item => item.uv) }]
-					}
+					//渲染访客地图数据
+					const mapData = this.convertData(res.data.cityVisitor || [])
+					this.mapOption.series[1].data = mapData
+					this.mapOption.series[2].data = mapData.slice(0, 5)
 					this.initMapEcharts()
 					//渲染一周访问量数据
 					this.visitRecordOption.xAxis.data = res.data.visitRecord.date
@@ -405,6 +403,20 @@
 			initMapEcharts() {
 				this.mapEcharts = echarts.init(this.$refs.mapEcharts)
 				this.mapEcharts.setOption(this.mapOption)
+			},
+			convertData(data) {
+				const result = []
+				for (let i = 0; i < data.length; i++) {
+					const geoCoord = geoCoordMap[data[i].city]
+					if (geoCoord) {
+						result.push({
+							name: data[i].city,
+							value: geoCoord,
+							uv: data[i].uv
+						})
+					}
+				}
+				return result
 			},
 			initVisitRecordEcharts() {
 				this.visitRecordEcharts = echarts.init(this.$refs.visitRecordEcharts)
