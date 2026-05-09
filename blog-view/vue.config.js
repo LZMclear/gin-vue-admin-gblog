@@ -13,6 +13,15 @@ module.exports = {
 			}
 		}
 	},
+	css: {
+		loaderOptions: {
+			css: {
+				url: {
+					filter: url => !url.startsWith('/') && !url.startsWith('data:')
+				}
+			}
+		}
+	},
 	configureWebpack: {
 		resolve: {
 			alias: {
