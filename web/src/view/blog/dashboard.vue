@@ -294,6 +294,9 @@
 					xAxis: {
 						data: [],
 						boundaryGap: false,
+						axisLabel: {
+							formatter: value => String(value).slice(5) || value
+						},
 						axisTick: {
 							show: false
 						}
