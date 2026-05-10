@@ -9,7 +9,25 @@ import (
 
 type SiteSettingService struct{}
 
+type defaultSiteSetting struct {
+	NameEn string
+	NameZh string
+	Value  string
+	Type   int
+}
+
+var defaultSiteSettings = []defaultSiteSetting{
+	{NameEn: "bg1", NameZh: "首页背景图 1", Value: "https://www.guitu.life/blog-file/bg1.jpg", Type: 1},
+	{NameEn: "bg2", NameZh: "首页背景图 2", Value: "https://www.guitu.life/blog-file/bg2.jpg", Type: 1},
+	{NameEn: "bg3", NameZh: "首页背景图 3", Value: "https://www.guitu.life/blog-file/bg3.jpg", Type: 1},
+	{NameEn: "malfunctionText", NameZh: "首页故障风文字", Value: "Gvto's Blog", Type: 1},
+}
+
 func (s *SiteSettingService) GetGrouped() (map[string][]blogModel.SiteSetting, error) {
+	if err := ensureDefaultSiteSettings(); err != nil {
+		return nil, err
+	}
+
 	var list []blogModel.SiteSetting
 	if err := global.GVA_DB.Order("id asc").Find(&list).Error; err != nil {
 		return nil, err
@@ -23,6 +41,34 @@ func (s *SiteSettingService) GetGrouped() (map[string][]blogModel.SiteSetting, e
 		result[key] = append(result[key], item)
 	}
 	return result, nil
+}
+
+func ensureDefaultSiteSettings() error {
+	for _, item := range defaultSiteSettings {
+		var existing blogModel.SiteSetting
+		err := global.GVA_DB.Where("name_en = ?", item.NameEn).First(&existing).Error
+		if err == nil {
+			continue
+		}
+		if err != gorm.ErrRecordNotFound {
+			return err
+		}
+
+		nameEn := item.NameEn
+		nameZh := item.NameZh
+		value := item.Value
+		settingType := item.Type
+		if err := global.GVA_DB.Create(&blogModel.SiteSetting{
+			NameEn: &nameEn,
+			NameZh: &nameZh,
+			Value:  &value,
+			Type:   &settingType,
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *SiteSettingService) UpdateAll(info blogReq.SiteSettingBatchUpdate) error {

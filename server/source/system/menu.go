@@ -62,6 +62,7 @@ func (i *initMenu) InitializeData(ctx context.Context) (next context.Context, er
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "https://www.gin-vue-admin.com", Name: "https://www.gin-vue-admin.com", Component: "/", Sort: 0, Meta: Meta{Title: "官方网站", Icon: "customer-gva"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "state", Name: "state", Component: "view/system/state.vue", Sort: 8, Meta: Meta{Title: "服务器状态", Icon: "cloudy"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "plugin", Name: "plugin", Component: "view/routerHolder.vue", Sort: 6, Meta: Meta{Title: "插件系统", Icon: "cherry"}},
+		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "gblog", Name: "gblog", Component: "view/routerHolder.vue", Sort: 2, Meta: Meta{Title: "GBlog", Icon: "idea"}},
 	}
 
 	// 先创建父级菜单（ParentId = 0 的菜单）
@@ -114,6 +115,23 @@ func (i *initMenu) InitializeData(ctx context.Context) (next context.Context, er
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["plugin"], Path: "pubPlug", Name: "pubPlug", Component: "view/systemTools/pubPlug/pubPlug.vue", Sort: 3, Meta: Meta{Title: "打包插件", Icon: "files"}},
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["plugin"], Path: "plugin-email", Name: "plugin-email", Component: "plugin/email/view/index.vue", Sort: 4, Meta: Meta{Title: "邮件插件", Icon: "message"}},
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["plugin"], Path: "anInfo", Name: "anInfo", Component: "plugin/announcement/view/info.vue", Sort: 5, Meta: Meta{Title: "公告管理[示例]", Icon: "scaleToOriginal"}},
+
+		// gblog子菜单
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "list", Name: "list", Component: "view/blog/blog/BlogList.vue", Sort: 1, Meta: Meta{Title: "博客列表", Icon: "list"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "edit/:id?", Name: "edit", Component: "view/blog/blog/WriteBlog.vue", Sort: 2, Meta: Meta{Title: "写文章", Icon: "edit"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogCategoryList", Name: "blogCategoryList", Component: "view/blog/category/CategoryList.vue", Sort: 3, Meta: Meta{Title: "文章类别", Icon: "filter"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogTagList", Name: "blogTagList", Component: "view/blog/tag/TagList.vue", Sort: 4, Meta: Meta{Title: "标签管理", Icon: "price-tag"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "operationLog", Name: "operationLog", Component: "view/blogLog/OperationLog.vue", Sort: 5, Meta: Meta{Title: "操作日志", Icon: "bell-filled"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "moment/list", Name: "moment/list", Component: "view/blog/moment/MomentList.vue", Sort: 6, Meta: Meta{Title: "动态列表", Icon: "chat-dot-square"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "moment/edit/:id?", Name: "moment/edit", Component: "view/blog/moment/WriteMoment.vue", Sort: 7, Meta: Meta{Title: "写动态", Icon: "edit"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogAbout", Name: "blogAbout", Component: "view/blogPage/About.vue", Sort: 8, Meta: Meta{Title: "关于我", Icon: "avatar"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogFriendList", Name: "blogFriendList", Component: "view/blogPage/FriendList.vue", Sort: 9, Meta: Meta{Title: "友链", Icon: "link"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogSiteSetting", Name: "blogSiteSetting", Component: "view/blogPage/SiteSetting.vue", Sort: 10, Meta: Meta{Title: "站点设置", Icon: "setting"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogExceptionLog", Name: "blogExceptionLog", Component: "view/blogLog/ExceptionLog.vue", Sort: 11, Meta: Meta{Title: "异常日志", Icon: "circle-close-filled"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogVisitLog", Name: "blogVisitLog", Component: "view/blogLog/VisitLog.vue", Sort: 12, Meta: Meta{Title: "访问日志", Icon: "search"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "blogVisitorStats", Name: "blogVisitorStats", Component: "view/blogStatistics/Visitor.vue", Sort: 13, Meta: Meta{Title: "访客统计", Icon: "trend-charts"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "commentList", Name: "commentList", Component: "view/blog/comment/CommentList.vue", Sort: 14, Meta: Meta{Title: "评论管理", Icon: "chat-round"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["gblog"], Path: "gdashboard", Name: "gdashboard", Component: "view/blog/dashboard.vue", Sort: 15, Meta:Meta{Title: "GDashboard", Icon: "pie-chart"}},
 	}
 
 	// 创建子菜单

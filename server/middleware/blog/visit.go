@@ -27,7 +27,7 @@ func VisitRecord(behavior string) gin.HandlerFunc {
 		ipSource := utils.BlogIPSource(ip)
 		ua := c.Request.UserAgent()
 		os, browser := utils.BlogParseUserAgent(ua)
-		dateKey := now.Format("01-02")
+		dateKey := now.Format("2006-01-02")
 		isNewVisitor := false
 		var visitor blogModel.Visitor
 		err := global.GVA_DB.Where("uuid = ?", identification).First(&visitor).Error
