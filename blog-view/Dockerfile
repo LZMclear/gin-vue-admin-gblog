@@ -11,7 +11,7 @@ RUN npm run build
 
 FROM nginx:alpine
 
-ARG API_PROXY_PASS=http://host.docker.internal:8888
+ARG API_PROXY_PASS=http://gva-gbserver:8888
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
