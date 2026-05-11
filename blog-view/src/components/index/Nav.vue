@@ -27,6 +27,9 @@
 			<router-link to="/about" class="item" :class="{'m-mobile-hide': mobileHide,'active':$route.name==='about'}">
 				<i class="info icon"></i>关于我
 			</router-link>
+			<router-link to="/docs" class="item" :class="{'m-mobile-hide': mobileHide,'active':$route.name==='docs'}">
+				<i class="book icon"></i>文档站
+			</router-link>
 			<el-autocomplete v-model="queryString" :fetch-suggestions="debounceQuery" placeholder="Search..."
 			                 class="right item m-search" :class="{'m-mobile-hide': mobileHide}"
 			                 popper-class="m-search-item" @select="handleSelect">

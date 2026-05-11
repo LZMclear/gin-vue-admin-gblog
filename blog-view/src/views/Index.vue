@@ -10,7 +10,8 @@
 		<div class="main">
 			<div class="m-padded-tb-big">
 				<div class="ui container">
-					<div class="ui stackable grid">
+					<router-view v-if="isDocsPage"/>
+					<div v-else class="ui stackable grid">
 						<!--左侧-->
 						<div class="three wide column m-mobile-hide">
 							<Introduction :class="{'m-display-none':focusMode}"/>
@@ -83,7 +84,10 @@
 			}
 		},
 		computed: {
-			...mapState(['focusMode'])
+			...mapState(['focusMode']),
+			isDocsPage() {
+				return this.$route.name === 'docs'
+			}
 		},
 		watch: {
 			//路由改变时，页面滚动至顶部

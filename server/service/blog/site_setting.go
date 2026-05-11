@@ -21,6 +21,10 @@ var defaultSiteSettings = []defaultSiteSetting{
 	{NameEn: "bg2", NameZh: "首页背景图 2", Value: "https://www.guitu.life/blog-file/bg2.jpg", Type: 1},
 	{NameEn: "bg3", NameZh: "首页背景图 3", Value: "https://www.guitu.life/blog-file/bg3.jpg", Type: 1},
 	{NameEn: "malfunctionText", NameZh: "首页故障风文字", Value: "Gvto's Blog", Type: 1},
+	{NameEn: "docsGithubRepo", NameZh: "GitHub文档仓库", Value: "", Type: 4},
+	{NameEn: "docsGithubBranch", NameZh: "文档仓库分支", Value: "main", Type: 4},
+	{NameEn: "docsGithubRoot", NameZh: "文档根目录", Value: "", Type: 4},
+	{NameEn: "docsGithubWebhookSecret", NameZh: "Webhook密钥", Value: "", Type: 4},
 }
 
 func (s *SiteSettingService) GetGrouped() (map[string][]blogModel.SiteSetting, error) {

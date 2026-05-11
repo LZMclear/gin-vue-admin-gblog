@@ -41,6 +41,22 @@
 		<el-row style="margin-top: 20px">
 			<el-card>
 				<template #header>
+					<div class="card-header">
+						<span>文档站设置</span>
+						<el-button type="success" size="small" icon="el-icon-refresh" :loading="syncingDocs" @click="handleSyncDocs">同步文档</el-button>
+					</div>
+				</template>
+				<el-form label-position="right" label-width="130px">
+					<el-form-item :label="item.nameZh" v-for="item in typeMap.type4" :key="item.id || item.key || item.nameEn">
+						<el-input v-model="item.value" size="small" :placeholder="docPlaceholder(item.nameEn)"></el-input>
+					</el-form-item>
+				</el-form>
+			</el-card>
+		</el-row>
+
+		<el-row style="margin-top: 20px">
+			<el-card>
+				<template #header>
 					<span>页脚徽标</span>
 				</template>
 				<el-form :inline="true" v-for="(badge, index) in typeMap.type3" :key="badge.id || badge.key || index">
@@ -75,11 +91,13 @@
 
 <script>
 	import {getSiteSettingData, update} from "@/api/blog/siteSetting";
+	import {syncDocs} from "@/api/blog/docs";
 
 	const emptyTypeMap = () => ({
 		type1: [],
 		type2: [],
-		type3: []
+		type3: [],
+		type4: []
 	})
 
 	const parseBadgeValue = (value) => {
@@ -122,6 +140,7 @@
 			return {
 				deleteIds: [],
 				typeMap: emptyTypeMap(),
+				syncingDocs: false,
 			}
 		},
 		created() {
@@ -134,7 +153,8 @@
 					const nextTypeMap = {
 						type1: Array.isArray(data.type1) ? data.type1 : [],
 						type2: Array.isArray(data.type2) ? data.type2 : [],
-						type3: Array.isArray(data.type3) ? data.type3 : []
+						type3: Array.isArray(data.type3) ? data.type3 : [],
+						type4: Array.isArray(data.type4) ? data.type4 : []
 					}
 
 					nextTypeMap.type1.forEach(item => {
@@ -145,6 +165,9 @@
 					})
 					nextTypeMap.type3.forEach(item => {
 						item.value = parseBadgeValue(item.value)
+					})
+					nextTypeMap.type4.forEach(item => {
+						item.value = item.value || ''
 					})
 					this.typeMap = nextTypeMap
 				})
@@ -220,10 +243,30 @@
 				updateArr.push(...result.type1)
 				updateArr.push(...result.type2)
 				updateArr.push(...result.type3)
+				updateArr.push(...result.type4)
 				update(updateArr, this.deleteIds).then(res => {
 					this.deleteIds = []
 					this.getData()
 					this.msgSuccess(res.msg)
+				})
+			},
+			docPlaceholder(nameEn) {
+				const map = {
+					docsGithubRepo: '例如：https://github.com/Percygu/GolangGuide',
+					docsGithubBranch: '例如：main',
+					docsGithubRoot: '例如：src 或 docs',
+					docsGithubWebhookSecret: '可选：与 GitHub Webhook Secret 保持一致'
+				}
+				return map[nameEn] || ''
+			},
+			handleSyncDocs() {
+				this.syncingDocs = true
+				syncDocs().then(res => {
+					if (res && res.code === 0) {
+						this.msgSuccess(res.msg || '同步文档成功')
+					}
+				}).finally(() => {
+					this.syncingDocs = false
 				})
 			}
 		}
@@ -231,5 +274,9 @@
 </script>
 
 <style scoped>
-
+	.card-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
 </style>
