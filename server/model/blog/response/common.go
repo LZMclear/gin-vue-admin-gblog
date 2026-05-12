@@ -11,3 +11,9 @@ type CategoryAndTagResponse struct {
 	Categories []blogModel.Category `json:"categories"`
 	Tags       []blogModel.Tag      `json:"tags"`
 }
+
+type SiteStats struct {
+	ArticleCount  int64 `json:"articleCount"`
+	CategoryCount int64 `json:"categoryCount"`
+	TagCount      int64 `json:"tagCount"`
+}

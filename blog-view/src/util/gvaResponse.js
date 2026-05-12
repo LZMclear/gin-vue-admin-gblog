@@ -76,7 +76,16 @@ export function normalizeSite(data = {}) {
 		categoryList: (data.categoryList || []).map(normalizeCategory),
 		tagList: (data.tagList || []).map(normalizeTag),
 		newBlogList: normalizeBlogs(data.newBlogList || []),
-		randomBlogList: normalizeBlogs(data.randomBlogList || [])
+		randomBlogList: normalizeBlogs(data.randomBlogList || []),
+		siteStats: normalizeSiteStats(data.siteStats, data)
+	}
+}
+
+function normalizeSiteStats(stats = {}, data = {}) {
+	return {
+		articleCount: Number(stats.articleCount || 0),
+		categoryCount: Number(stats.categoryCount || (data.categoryList || []).length || 0),
+		tagCount: Number(stats.tagCount || (data.tagList || []).length || 0)
 	}
 }
 

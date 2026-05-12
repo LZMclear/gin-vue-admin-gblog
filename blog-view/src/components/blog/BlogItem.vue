@@ -1,55 +1,44 @@
 <template>
-	<div>
-		<div class="ui padded attached segment m-padded-tb-large m-margin-bottom-big m-box" v-for="item in blogList" :key="item.id">
-			<div class="ui large red right corner label" v-if="item.top">
-				<i class="arrow alternate circle up icon"></i>
+	<div class="article-list">
+		<article class="article-item" v-for="item in blogList" :key="item.id">
+			<div class="top-badge" v-if="item.top"><i class="arrow alternate circle up icon"></i></div>
+			<div class="article-cover">
+				<img v-if="getCoverUrl(item)" :src="getCoverUrl(item)" alt="">
+				<div v-else class="article-cover-placeholder">{{ getTitleInitial(item.title) }}</div>
 			</div>
-			<div class="ui middle aligned mobile reversed stackable">
-				<div class="ui grid m-margin-lr">
-					<!--标题-->
-					<div class="row m-padded-tb-small">
-						<h2 class="ui header m-center m-scaleup">
-							<a href="javascript:;" @click.prevent="toBlog(item)" class="m-black">{{ item.title }}</a>
-						</h2>
+
+			<div class="article-main">
+				<div class="article-category" v-if="item.category">
+					<router-link :to="`/category/${item.category.categoryName}`">{{ item.category.categoryName }}</router-link>
+				</div>
+
+				<h3 class="article-title">
+					<a href="" @click.prevent="toBlog(item)">{{ item.title }}</a>
+				</h3>
+
+				<div class="article-meta">
+					<span><i class="calendar outline icon"></i>{{ item.createTime | dateFormat('YYYY-MM-DD') }}</span>
+					<span><i class="eye icon"></i>{{ item.views || 0 }}</span>
+					<span><i class="book icon"></i>字数 {{ formatCount(item.words) }}</span>
+					<span><i class="clock outline icon"></i>阅读时长 {{ item.readTime || 1 }} 分钟</span>
+				</div>
+
+				<p class="article-preview">{{ item.privacy ? '当前文章已加密' : (item.preview || '暂无预览内容') }}</p>
+
+				<div class="article-bottom">
+					<div class="article-tags">
+						<router-link
+							v-for="tag in item.tags"
+							:key="tag.id || tag.tagName"
+							:to="`/tag/${tag.tagName}`"
+						>{{ tag.tagName }}</router-link>
 					</div>
-					<!--文章简要信息-->
-					<div class="row m-padded-tb-small">
-						<div class="ui horizontal link list m-center">
-							<div class="item m-datetime">
-								<i class="small calendar icon"></i><span>{{ item.createTime | dateFormat('YYYY-MM-DD')}}</span>
-							</div>
-							<div class="item m-views">
-								<i class="small eye icon"></i><span>{{ item.views }}</span>
-							</div>
-							<div class="item m-common-black">
-								<i class="small pencil alternate icon"></i><span>字数≈{{ item.words }}字</span>
-							</div>
-							<div class="item m-common-black">
-								<i class="small clock icon"></i><span>阅读时长≈{{ item.readTime }}分</span>
-							</div>
-						</div>
-					</div>
-					<!--分类-->
-					<router-link :to="`/category/${item.category.categoryName}`" class="ui orange large ribbon label">
-						<i class="small folder open icon"></i><span class="m-text-500">{{ item.category.categoryName }}</span>
-					</router-link>
-					<!--文章Markdown描述-->
-					<div class="typo m-padded-tb-small line-numbers match-braces rainbow-braces" v-html="item.description"></div>
-					<!--阅读全文按钮-->
-					<div class="row m-padded-tb-small m-margin-top">
-						<a href="javascript:;" @click.prevent="toBlog(item)" class="color-btn">阅读全文</a>
-					</div>
-					<!--横线-->
-					<div class="ui section divider m-margin-lr-no"></div>
-					<!--标签-->
-					<div class="row m-padded-tb-no">
-						<div class="column m-padding-left-no">
-							<router-link :to="`/tag/${tag.tagName}`" class="ui tag label m-text-500 m-margin-small" :class="tag.color" v-for="(tag,index) in item.tags" :key="index">{{ tag.tagName }}</router-link>
-						</div>
-					</div>
+					<a href="" class="read-more" @click.prevent="toBlog(item)">
+						阅读全文 <i class="arrow right icon"></i>
+					</a>
 				</div>
 			</div>
-		</div>
+		</article>
 	</div>
 </template>
 
@@ -65,11 +54,268 @@
 		methods: {
 			toBlog(blog) {
 				this.$store.dispatch('goBlogPage', blog)
+			},
+			formatCount(value) {
+				const num = Number(value) || 0
+				if (num >= 1000) {
+					const short = Math.round(num / 100) / 10
+					return `${short}k`
+				}
+				return String(num)
+			},
+			getTitleInitial(title) {
+				return (title || '文').trim().slice(0, 1)
+			},
+			getCoverUrl(item) {
+				const html = item && item.description
+				if (!html) {
+					return ''
+				}
+				const match = String(html).match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i)
+				return match ? match[1] : ''
 			}
 		}
 	}
 </script>
 
 <style scoped>
+	.article-list {
+		display: grid;
+		gap: 18px;
+	}
 
+	.article-item {
+		position: relative;
+		display: grid;
+		grid-template-columns: 220px minmax(0, 1fr);
+		gap: 22px;
+		padding: 18px;
+		overflow: hidden;
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		background: #fff;
+		transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+	}
+
+	.article-item:hover {
+		border-color: #bfdbfe;
+		box-shadow: 0 14px 34px rgba(37, 99, 235, .1);
+		transform: translateY(-1px);
+	}
+
+	.article-cover {
+		position: relative;
+		display: block;
+		overflow: hidden;
+		min-height: 174px;
+		border-radius: 8px;
+		background: #eef2f7;
+	}
+
+	.article-cover img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		min-height: 174px;
+		object-fit: cover;
+		transition: transform .25s ease;
+	}
+
+	.article-item:hover .article-cover img {
+		transform: scale(1.04);
+	}
+
+	.article-cover-placeholder {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		min-height: 174px;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #dbeafe, #f1f5f9);
+		color: #2563eb;
+		font-size: 40px;
+		font-weight: 700;
+	}
+
+	.top-badge {
+		position: absolute;
+		top: 0;
+		right: 0;
+		z-index: 2;
+		width: 54px;
+		height: 54px;
+		overflow: hidden;
+		border-top-right-radius: 8px;
+		color: #fff;
+	}
+
+	.top-badge::before {
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 0;
+		height: 0;
+		border-top: 54px solid #ef4444;
+		border-left: 54px solid transparent;
+		content: '';
+	}
+
+	.top-badge i {
+		position: absolute;
+		top: 9px;
+		right: 8px;
+		z-index: 1;
+		display: flex;
+		width: 18px;
+		height: 18px;
+		align-items: center;
+		justify-content: center;
+		margin: 0 !important;
+		font-size: 17px;
+		line-height: 1 !important;
+	}
+
+	.article-main {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+	}
+
+	.article-category a {
+		display: inline-flex;
+		padding: 7px 12px;
+		border-radius: 6px;
+		background: #eff6ff;
+		color: #2563eb;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.article-title {
+		margin: 14px 0 10px;
+		font-size: 25px;
+		line-height: 1.28;
+		letter-spacing: 0;
+	}
+
+	.article-title a {
+		color: #111827;
+	}
+
+	.article-title a:hover {
+		color: #2563eb;
+	}
+
+	.article-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 14px;
+		margin-bottom: 10px;
+		color: #667085;
+		font-size: 14px;
+	}
+
+	.article-meta span {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		line-height: 1;
+	}
+
+	.article-meta i {
+		display: inline-flex;
+		width: 16px;
+		height: 16px;
+		align-items: center;
+		justify-content: center;
+		margin: 0 !important;
+		line-height: 1 !important;
+		vertical-align: middle;
+	}
+
+	.article-preview {
+		display: -webkit-box;
+		margin: 0 0 14px;
+		overflow: hidden;
+		color: #4b5563;
+		font-size: 15px;
+		line-height: 1.75;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+	}
+
+	.article-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 14px;
+		margin-top: auto;
+	}
+
+	.article-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.article-tags a {
+		padding: 6px 12px;
+		border-radius: 999px;
+		background: #f3f4f6;
+		color: #6b7280;
+		font-size: 13px;
+	}
+
+	.article-tags a:hover {
+		background: #e0edff;
+		color: #2563eb;
+	}
+
+	.read-more {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		padding: 8px 13px;
+		border: 1px solid #60a5fa;
+		border-radius: 6px;
+		color: #2563eb;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.read-more:hover {
+		background: #eff6ff;
+		color: #1d4ed8;
+	}
+
+	.read-more i {
+		display: inline-flex;
+		width: 14px;
+		height: 14px;
+		align-items: center;
+		justify-content: center;
+		margin: 0 !important;
+		line-height: 1 !important;
+		vertical-align: middle;
+	}
+
+	@media only screen and (max-width: 760px) {
+		.article-item {
+			grid-template-columns: 1fr;
+		}
+
+		.article-cover,
+		.article-cover img,
+		.article-cover-placeholder {
+			min-height: 190px;
+		}
+
+		.article-bottom {
+			align-items: flex-start;
+			flex-direction: column;
+		}
+	}
 </style>

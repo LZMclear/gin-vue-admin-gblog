@@ -3,6 +3,7 @@ package blog
 import (
 	"errors"
 	"fmt"
+	stdhtml "html"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
 	"github.com/flipped-aurora/gin-vue-admin/server/utils"
+	xhtml "golang.org/x/net/html"
 	"gorm.io/gorm"
 )
 
@@ -324,6 +326,7 @@ func buildBlogInfoItems(blogs []blogModel.Blog) []blogResp.BlogInfoItem {
 			ID:          item.ID,
 			Title:       item.Title,
 			Description: utils.MarkdownToHTML(item.Description),
+			Preview:     buildContentPreview(item.Content, 100),
 			CreateTime:  item.CreateTime,
 			Views:       item.Views,
 			Words:       item.Words,
@@ -334,10 +337,55 @@ func buildBlogInfoItems(blogs []blogModel.Blog) []blogResp.BlogInfoItem {
 		}
 		if item.Password != nil && strings.TrimSpace(*item.Password) != "" {
 			info.Privacy = true
+			info.Preview = ""
 		}
 		items = append(items, info)
 	}
 	return items
+}
+
+func buildContentPreview(content string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	text := markdownPlainText(content)
+	runes := []rune(text)
+	if len(runes) <= limit {
+		return text
+	}
+	return string(runes[:limit])
+}
+
+func markdownPlainText(content string) string {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return ""
+	}
+
+	htmlText := utils.MarkdownToHTML(content)
+	tokenizer := xhtml.NewTokenizer(strings.NewReader(htmlText))
+	var builder strings.Builder
+	for {
+		tokenType := tokenizer.Next()
+		switch tokenType {
+		case xhtml.ErrorToken:
+			return normalizePreviewText(builder.String())
+		case xhtml.TextToken:
+			text := strings.TrimSpace(string(tokenizer.Text()))
+			if text == "" {
+				continue
+			}
+			if builder.Len() > 0 {
+				builder.WriteString(" ")
+			}
+			builder.WriteString(text)
+		}
+	}
+}
+
+func normalizePreviewText(text string) string {
+	text = stdhtml.UnescapeString(text)
+	return strings.Join(strings.Fields(text), " ")
 }
 
 func buildBlogDetail(item blogModel.Blog) blogResp.BlogDetail {

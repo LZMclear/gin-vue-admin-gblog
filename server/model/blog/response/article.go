@@ -25,6 +25,7 @@ type BlogInfoItem struct {
 	ID          uint                `json:"id"`
 	Title       string              `json:"title"`
 	Description string              `json:"description"`
+	Preview     string              `json:"preview"`
 	CreateTime  time.Time           `json:"createTime"`
 	Views       int                 `json:"views"`
 	Words       int                 `json:"words"`

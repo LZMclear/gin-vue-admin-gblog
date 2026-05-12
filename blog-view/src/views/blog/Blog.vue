@@ -1,46 +1,49 @@
 <template>
 	<div>
-		<div class="ui padded attached segment m-padded-tb-large">
+		<div class="ui padded attached segment m-padded-tb-large blog-detail-card" v-loading="loading">
 			<div class="ui large red right corner label" v-if="blog.top">
 				<i class="arrow alternate circle up icon"></i>
 			</div>
-			<div class="ui middle aligned mobile reversed stackable">
-				<div class="ui grid m-margin-lr">
-					<!--标题-->
-					<div class="row m-padded-tb-small">
-						<h2 class="ui header m-center">{{ blog.title }}</h2>
-					</div>
-					<!--文章简要信息-->
-					<div class="row m-padded-tb-small">
-						<div class="ui horizontal link list m-center">
-							<div class="item m-datetime">
-								<i class="small calendar icon"></i><span>{{ blog.createTime | dateFormat('YYYY-MM-DD') }}</span>
-							</div>
-							<div class="item m-views">
-								<i class="small eye icon"></i><span>{{ blog.views }}</span>
-							</div>
-							<div class="item m-common-black">
-								<i class="small pencil alternate icon"></i><span>字数≈{{ blog.words }}字</span>
-							</div>
-							<div class="item m-common-black">
-								<i class="small clock icon"></i><span>阅读时长≈{{ blog.readTime }}分</span>
-							</div>
-							<a class="item m-common-black" @click.prevent="bigFontSize=!bigFontSize">
-								<div data-inverted="" data-tooltip="点击切换字体大小" data-position="top center">
-									<i class="font icon"></i>
-								</div>
-							</a>
-							<a class="item m-common-black" @click.prevent="changeFocusMode">
-								<div data-inverted="" data-tooltip="专注模式" data-position="top center">
-									<i class="book icon"></i>
-								</div>
-							</a>
+			<header class="blog-header">
+				<div class="blog-header-top">
+					<div class="blog-header-left">
+						<button class="back-button" type="button" @click="goBack" title="返回">
+							<i class="home icon"></i>
+						</button>
+						<div class="header-tags" v-if="blog.tags && blog.tags.length">
+							<span class="breadcrumb-separator">/</span>
+							<template v-for="(tag, index) in blog.tags">
+								<router-link
+									:key="tag.id || tag.tagName"
+									:to="`/tag/${tag.tagName}`"
+									class="header-tag"
+									:class="tag.color"
+								>{{ tag.tagName }}</router-link>
+								<span class="breadcrumb-separator" :key="`${tag.id || tag.tagName}-separator`" v-if="index < blog.tags.length - 1">/</span>
+							</template>
 						</div>
 					</div>
-					<!--分类-->
-					<router-link :to="`/category/${blog.category.categoryName}`" class="ui orange large ribbon label" v-if="blog.category">
-						<i class="small folder open icon"></i><span class="m-text-500">{{ blog.category.categoryName }}</span>
+					<router-link :to="`/category/${blog.category.categoryName}`" class="header-category" v-if="blog.category">
+						{{ blog.category.categoryName }}
 					</router-link>
+				</div>
+				<h1 class="blog-title">{{ blog.title }}</h1>
+				<div class="blog-meta">
+					<span><i class="user outline icon"></i>作者：{{ authorName }}</span>
+					<span><i class="calendar outline icon"></i>{{ blog.createTime | dateFormat('YYYY-MM-DD') }}</span>
+					<span><i class="eye icon"></i>{{ blog.views || 0 }}</span>
+					<span><i class="book icon"></i>字数 {{ blog.words || 0 }}</span>
+					<span><i class="clock outline icon"></i>阅读时长 {{ blog.readTime || 1 }} 分钟</span>
+					<button class="meta-action" type="button" @click.prevent="bigFontSize=!bigFontSize" title="切换字体大小">
+						<i class="font icon"></i>
+					</button>
+					<button class="meta-action" type="button" @click.prevent="changeFocusMode" title="专注模式">
+						<i class="book reader icon"></i>
+					</button>
+				</div>
+			</header>
+			<div class="ui middle aligned mobile reversed stackable">
+				<div class="ui grid m-margin-lr">
 					<!--文章Markdown正文-->
 					<div class="typo js-toc-content m-padded-tb-small match-braces rainbow-braces" v-viewer :class="{'m-big-fontsize':bigFontSize}" v-html="blog.content"></div>
 					<!--赞赏-->
@@ -56,30 +59,11 @@
 							<el-button slot="reference" class="ui orange inverted circular button m-text-500">赞赏</el-button>
 						</el-popover>
 					</div>
-					<!--横线-->
-					<el-divider></el-divider>
-					<!--标签-->
-					<div class="row m-padded-tb-no">
-						<div class="column m-padding-left-no">
-							<router-link :to="`/tag/${tag.tagName}`" class="ui tag label m-text-500 m-margin-small" :class="tag.color" v-for="(tag,index) in blog.tags" :key="index">{{ tag.tagName }}</router-link>
-						</div>
-					</div>
 				</div>
 			</div>
 		</div>
-		<!--博客信息-->
-		<div class="ui attached positive message">
-			<ul class="list">
-				<li>作者：{{ $store.state.introduction.name }}
-					<router-link to="/about">（联系作者）</router-link>
-				</li>
-				<li>发表时间：{{ blog.createTime | dateFormat('YYYY-MM-DD HH:mm') }}</li>
-				<li>最后修改：{{ blog.updateTime | dateFormat('YYYY-MM-DD HH:mm') }}</li>
-				<li>本站点采用<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank"> 署名 4.0 国际 (CC BY 4.0) </a>创作共享协议。可自由转载、引用，并且允许商业性使用。但需署名作者且注明文章出处。</li>
-			</ul>
-		</div>
 		<!--评论-->
-		<div class="ui bottom teal attached segment threaded comments">
+		<div class="ui bottom teal attached segment threaded comments" v-if="!loading && blog.id">
 			<CommentList :page="0" :blogId="blogId" v-if="blog.commentEnabled"/>
 			<h3 class="ui header" v-else>评论已关闭</h3>
 		</div>
@@ -98,15 +82,20 @@
 		components: {CommentList},
 		data() {
 			return {
-				blog: {},
+				blog: this.emptyBlog(),
 				bigFontSize: false,
+				loading: false,
+				blogRequestSeq: 0,
 			}
 		},
 		computed: {
 			blogId() {
 				return parseInt(this.$route.params.id)
 			},
-			...mapState(['siteInfo', 'focusMode'])
+			...mapState(['siteInfo', 'focusMode', 'introduction']),
+			authorName() {
+				return this.introduction && this.introduction.name ? this.introduction.name : 'Gvto'
+			}
 		},
 		beforeRouteEnter(to, from, next) {
 			//路由到博客文章页面之前，应将文章的渲染完成状态置为 false
@@ -139,25 +128,56 @@
 				//只要路由路径有改变，且停留在当前Blog组件内，就把文章的渲染完成状态置为 false
 				this.$store.commit(SET_IS_BLOG_RENDER_COMPLETE, false)
 				next()
+			} else {
+				next(false)
 			}
 		},
 		created() {
 			this.getBlog()
 		},
 		methods: {
+			emptyBlog() {
+				return {
+					id: 0,
+					title: '',
+					content: '',
+					tags: [],
+					category: null,
+					commentEnabled: false,
+				}
+			},
+			goBack() {
+				if (window.history.length > 1) {
+					this.$router.back()
+					return
+				}
+				this.$router.push({name: 'home'})
+			},
 			getBlog(id = this.blogId) {
+				const requestSeq = ++this.blogRequestSeq
+				this.loading = true
+				this.blog = this.emptyBlog()
+				this.$store.commit(SET_IS_BLOG_RENDER_COMPLETE, false)
+				if (window.tocbot && typeof window.tocbot.destroy === 'function') {
+					window.tocbot.destroy()
+				}
 				//密码保护的文章，需要发送密码验证通过后保存在localStorage的Token
 				const blogToken = window.localStorage.getItem(`blog${id}`)
 				//如果有则发送博主身份Token
 				const adminToken = window.localStorage.getItem('adminToken')
 				const token = adminToken ? adminToken : (blogToken ? blogToken : '')
 				getBlogById(token, id).then(res => {
+					if (requestSeq !== this.blogRequestSeq) {
+						return
+					}
 					if (isSuccess(res)) {
 						this.blog = normalizeBlog(res.data)
 						document.title = this.blog.title + this.siteInfo.webTitleSuffix
 						//v-html渲染完毕后，渲染代码块样式
 						this.$nextTick(() => {
-							Prism.highlightAll()
+							if (window.Prism && typeof window.Prism.highlightAll === 'function') {
+								window.Prism.highlightAll()
+							}
 							//将文章渲染完成状态置为 true
 							this.$store.commit(SET_IS_BLOG_RENDER_COMPLETE, true)
 						})
@@ -165,7 +185,14 @@
 						this.msgError(res.msg)
 					}
 				}).catch(() => {
+					if (requestSeq !== this.blogRequestSeq) {
+						return
+					}
 					this.msgError("请求失败")
+				}).finally(() => {
+					if (requestSeq === this.blogRequestSeq) {
+						this.loading = false
+					}
 				})
 			},
 			changeFocusMode() {
@@ -176,6 +203,166 @@
 </script>
 
 <style scoped>
+	.blog-detail-card {
+		position: relative;
+		overflow: hidden;
+		border-radius: 8px 8px 0 0 !important;
+		background: #fff !important;
+	}
+
+	.blog-header {
+		margin: 0 1rem 24px;
+		padding: 0 0 24px;
+		border-bottom: 1px solid #e5e7eb;
+		background: #fff;
+	}
+
+	.blog-header-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 18px;
+	}
+
+	.blog-header-left {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 8px;
+		color: #6b7280;
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	.back-button,
+	.meta-action {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		font-family: inherit;
+	}
+
+	.back-button {
+		width: 18px;
+		height: 18px;
+		padding: 0;
+		border-radius: 6px;
+		color: #64748b;
+		font-size: 14px;
+		line-height: 1;
+		transition: background-color .2s ease, color .2s ease;
+	}
+
+	.back-button:hover {
+		background: transparent;
+		color: #2563eb;
+	}
+
+	.back-button i,
+	.meta-action i,
+	.blog-meta i {
+		display: inline-flex;
+		width: 16px;
+		height: 16px;
+		align-items: center;
+		justify-content: center;
+		margin: 0 !important;
+		line-height: 1 !important;
+	}
+
+	.header-tags {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.breadcrumb-separator {
+		color: #c0c7d2;
+	}
+
+	.header-tag,
+	.header-category {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: #64748b;
+		font-size: 13px;
+		font-weight: 500;
+		line-height: 1;
+	}
+
+	.header-tag:hover {
+		color: #1d4ed8;
+	}
+
+	.header-category {
+		flex: 0 0 auto;
+		min-height: 30px;
+		padding: 7px 12px;
+		border-radius: 6px;
+		background: #eff6ff;
+		color: #2563eb;
+		font-weight: 700;
+	}
+
+	.header-category:hover {
+		background: #dbeafe;
+		color: #1d4ed8;
+	}
+
+	.blog-title {
+		margin: 0;
+		color: #0f172a;
+		font-size: 34px;
+		font-weight: 800;
+		letter-spacing: 0;
+		line-height: 1.25;
+	}
+
+	.blog-detail-card .ui.grid.m-margin-lr {
+		margin-right: 0 !important;
+		margin-left: 0 !important;
+	}
+
+	.blog-detail-card .typo {
+		width: 100%;
+	}
+
+	.blog-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 14px;
+		margin-top: 20px;
+		color: #6b7280;
+		font-size: 14px;
+		font-weight: 400;
+	}
+
+	.blog-meta span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		line-height: 1;
+	}
+
+	.meta-action {
+		width: 28px;
+		height: 28px;
+		border-radius: 6px;
+		color: #64748b;
+	}
+
+	.meta-action:hover {
+		background: #dbeafe;
+		color: #2563eb;
+	}
+
 	.el-divider {
 		margin: 1rem 0 !important;
 	}
@@ -186,5 +373,26 @@
 		height: 55px;
 		margin-top: -55px;
 		visibility: hidden;
+	}
+
+	@media only screen and (max-width: 760px) {
+		.blog-header {
+			margin: 0 1rem 20px;
+			padding: 0 0 20px;
+		}
+
+		.blog-header-top,
+		.blog-header-left {
+			align-items: flex-start;
+			flex-direction: column;
+		}
+
+		.header-category {
+			align-self: flex-start;
+		}
+
+		.blog-title {
+			font-size: 28px;
+		}
 	}
 </style>

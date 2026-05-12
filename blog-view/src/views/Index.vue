@@ -28,6 +28,7 @@
 							<Tags :tagList="tagList" :class="{'m-display-none':focusMode}"/>
 							<!--只在文章页面显示目录-->
 							<Tocbot v-if="$route.name==='blog'"/>
+							<SiteAbout :stats="siteStats" :class="{'m-display-none':focusMode}"/>
 						</div>
 					</div>
 				</div>
@@ -59,6 +60,7 @@
 	import Tags from "@/components/sidebar/Tags";
 	import RandomBlog from "@/components/sidebar/RandomBlog";
 	import Tocbot from "@/components/sidebar/Tocbot";
+	import SiteAbout from "@/components/sidebar/SiteAbout";
 	import BlogPasswordDialog from "@/components/index/BlogPasswordDialog";
 	import {mapState} from 'vuex'
 	import {SAVE_CLIENT_SIZE, SAVE_INTRODUCTION, SAVE_SITE_INFO, RESTORE_COMMENT_FORM} from "@/store/mutations-types";
@@ -66,7 +68,7 @@
 
 	export default {
 		name: "Index",
-		components: {Header, BlogPasswordDialog, Tocbot, RandomBlog, Tags, Nav, Footer, Introduction},
+		components: {Header, BlogPasswordDialog, Tocbot, SiteAbout, RandomBlog, Tags, Nav, Footer, Introduction},
 		data() {
 			return {
 				siteInfo: {
@@ -80,6 +82,11 @@
 				randomBlogList: [],
 				badges: [],
 				newBlogList: [],
+				siteStats: {
+					articleCount: 0,
+					categoryCount: 0,
+					tagCount: 0
+				},
 				hitokoto: {},
 			}
 		},
@@ -119,6 +126,7 @@
 						this.categoryList = site.categoryList
 						this.tagList = site.tagList
 						this.randomBlogList = site.randomBlogList
+						this.siteStats = site.siteStats
 						this.$store.commit(SAVE_SITE_INFO, this.siteInfo)
 						this.$store.commit(SAVE_INTRODUCTION, site.introduction)
 						document.title = this.$route.meta.title + this.siteInfo.webTitleSuffix
