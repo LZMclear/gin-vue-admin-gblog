@@ -34,3 +34,7 @@ func (s *VisitLogService) GetList(info blogReq.DateRangePageQuery, uuid string) 
 func (s *VisitLogService) Delete(id uint) error {
 	return global.GVA_DB.Delete(&blogModel.VisitLog{}, id).Error
 }
+
+func (s *VisitLogService) DeleteByIds(ids []int) error {
+	return global.GVA_DB.Delete(&[]blogModel.VisitLog{}, "id in ?", ids).Error
+}

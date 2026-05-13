@@ -8,9 +8,17 @@
 			<el-form-item>
 				<el-button type="primary" size="small" icon="el-icon-search" @click="search">搜索</el-button>
 			</el-form-item>
+			<el-form-item>
+				<el-popconfirm title="确定删除选中的访客吗？" icon="el-icon-delete" iconColor="red" @confirm="deleteSelectedVisitors">
+					<template #reference>
+						<el-button type="danger" size="small" icon="el-icon-delete" :disabled="multipleSelection.length === 0">批量删除</el-button>
+					</template>
+				</el-popconfirm>
+			</el-form-item>
 		</el-form>
 
-		<el-table :data="visitorList">
+		<el-table :data="visitorList" @selection-change="handleSelectionChange">
+			<el-table-column type="selection" width="55"></el-table-column>
 			<el-table-column label="序号" type="index" width="100"></el-table-column>
 			<el-table-column label="访客标识" prop="uuid" show-overflow-tooltip></el-table-column>
 			<el-table-column label="IP" prop="ip" show-overflow-tooltip></el-table-column>
@@ -52,7 +60,7 @@
 </template>
 
 <script>
-	import {getVisitorList, deleteVisitor} from "@/api/blog/visitor";
+	import {getVisitorList, deleteVisitor, deleteVisitorsByIds} from "@/api/blog/visitor";
 	import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 
 	export default {
@@ -67,6 +75,7 @@
 				},
 				visitorList: [],
 				total: 0,
+				multipleSelection: [],
 			}
 		},
 		created() {
@@ -91,9 +100,26 @@
 				this.queryInfo.pageNum = newPage
 				this.getData()
 			},
+			handleSelectionChange(selection) {
+				this.multipleSelection = selection
+			},
 			deleteVisitorById(visitor) {
 				deleteVisitor(visitor.id, visitor.uuid).then(res => {
 					this.msgSuccess(res.msg)
+					this.getData()
+				})
+			},
+			deleteSelectedVisitors() {
+				const ids = this.multipleSelection.map(item => item.id)
+				if (ids.length === 0) {
+					return
+				}
+				deleteVisitorsByIds(ids).then(res => {
+					this.msgSuccess(res.msg)
+					if (this.visitorList.length === ids.length && this.queryInfo.pageNum > 1) {
+						this.queryInfo.pageNum--
+					}
+					this.multipleSelection = []
 					this.getData()
 				})
 			},

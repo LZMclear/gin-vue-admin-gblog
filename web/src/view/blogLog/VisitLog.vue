@@ -13,9 +13,17 @@
 			<el-form-item>
 				<el-button type="primary" size="small" icon="el-icon-search" @click="search">搜索</el-button>
 			</el-form-item>
+			<el-form-item>
+				<el-popconfirm title="确定删除选中的访问日志吗？" icon="el-icon-delete" iconColor="red" @confirm="deleteSelectedLogs">
+					<template #reference>
+						<el-button type="danger" size="small" icon="el-icon-delete" :disabled="multipleSelection.length === 0">批量删除</el-button>
+					</template>
+				</el-popconfirm>
+			</el-form-item>
 		</el-form>
 
-		<el-table :data="logList">
+		<el-table :data="logList" @selection-change="handleSelectionChange">
+			<el-table-column type="selection" width="55"></el-table-column>
 			<el-table-column type="expand">
 				<template v-slot="props">
 					<el-form label-position="left" class="table-expand">
@@ -70,7 +78,7 @@
 </template>
 
 <script>
-	import {getVisitLogList, deleteVisitLogById} from "@/api/blog/visitLog";
+	import {getVisitLogList, deleteVisitLogById, deleteVisitLogsByIds} from "@/api/blog/visitLog";
 	import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 
 	export default {
@@ -86,6 +94,7 @@
 				},
 				logList: [],
 				total: 0,
+				multipleSelection: [],
 			}
 		},
 		created() {
@@ -113,9 +122,26 @@
 				this.queryInfo.pageNum = newPage
 				this.getData()
 			},
+			handleSelectionChange(selection) {
+				this.multipleSelection = selection
+			},
 			deleteLogById(id) {
 				deleteVisitLogById(id).then(res => {
 					this.msgSuccess(res.msg)
+					this.getData()
+				})
+			},
+			deleteSelectedLogs() {
+				const ids = this.multipleSelection.map(item => item.id)
+				if (ids.length === 0) {
+					return
+				}
+				deleteVisitLogsByIds(ids).then(res => {
+					this.msgSuccess(res.msg)
+					if (this.logList.length === ids.length && this.queryInfo.pageNum > 1) {
+						this.queryInfo.pageNum--
+					}
+					this.multipleSelection = []
 					this.getData()
 				})
 			},

@@ -16,3 +16,11 @@ export function deleteVisitLogById(id) {
     data: { id }
   })
 }
+
+export function deleteVisitLogsByIds(ids) {
+  return service({
+    url: '/admin/visitLogs',
+    method: 'DELETE',
+    data: { ids }
+  })
+}
