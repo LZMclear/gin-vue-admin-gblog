@@ -10,8 +10,8 @@ type FriendRouter struct{}
 func (r *FriendRouter) InitFriendRouter(Router *gin.RouterGroup, PublicRouter *gin.RouterGroup) {
 	adminRecordRouter := Router.Group("admin").Use(blogmw.OperationRecord())
 	adminRouter := Router.Group("admin")
-	PublicRouter.Group("").Use(blogmw.VisitRecord("friend")).GET("friends", friendApi.GetFriends)
-	PublicRouter.Group("").Use(blogmw.VisitRecord("click_friend")).POST("friend", friendApi.AddFriendViews)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorFriend)).GET("friends", friendApi.GetFriends)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorClickFriend)).POST("friend", friendApi.AddFriendViews)
 	adminRouter.GET("friends", friendApi.GetFriendList)
 	adminRouter.GET("friendInfo", friendApi.GetFriendInfo)
 	adminRecordRouter.PUT("friend/published", friendApi.UpdateFriendPublished)

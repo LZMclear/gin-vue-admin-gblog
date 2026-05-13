@@ -61,6 +61,7 @@ func (s *DashboardService) GetSummary() (map[string]interface{}, error) {
 	var todayPV int64
 	if err := global.GVA_DB.Model(&blogModel.VisitLog{}).
 		Where("create_time >= ? AND create_time < ?", todayStart, todayEnd).
+		Where("behavior IN ?", pageViewBehaviors()).
 		Count(&todayPV).Error; err != nil {
 		return nil, err
 	}
@@ -114,4 +115,8 @@ func (s *DashboardService) GetSummary() (map[string]interface{}, error) {
 		"visitRecord":  buildVisitRecordMap(visitRecords),
 		"cityVisitor":  cityVisitors,
 	}, nil
+}
+
+func pageViewBehaviors() []string {
+	return []string{"访问页面", "查看博客", "查看分类", "查看标签"}
 }
