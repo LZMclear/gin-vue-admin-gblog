@@ -3,7 +3,17 @@ package utils
 import (
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
+
+	ip2region "github.com/lionsoul2014/ip2region/binding/golang/service"
+)
+
+var (
+	blogIPRegionOnce sync.Once
+	blogIPRegion     *ip2region.Ip2Region
 )
 
 func BlogClientIP(r *http.Request) string {
@@ -47,7 +57,67 @@ func BlogIPSource(ip string) string {
 	if isPrivateIP(parsed) {
 		return "private-network"
 	}
+	if source := blogGeoIPSource(ip); source != "" {
+		return source
+	}
 	return "public-network"
+}
+
+func blogGeoIPSource(ip string) string {
+	searcher := blogIPRegionSearcher()
+	if searcher == nil {
+		return ""
+	}
+	region, err := searcher.Search(ip)
+	if err != nil {
+		return ""
+	}
+	return formatBlogIPRegion(region)
+}
+
+func blogIPRegionSearcher() *ip2region.Ip2Region {
+	blogIPRegionOnce.Do(func() {
+		v4Path := findBlogIPRegionDB("ip2region_v4.xdb")
+		v6Path := findBlogIPRegionDB("ip2region_v6.xdb")
+		if v4Path == "" && v6Path == "" {
+			return
+		}
+		searcher, err := ip2region.NewIp2RegionWithPath(v4Path, v6Path)
+		if err == nil {
+			blogIPRegion = searcher
+		}
+	})
+	return blogIPRegion
+}
+
+func findBlogIPRegionDB(name string) string {
+	candidates := []string{
+		filepath.Join("resource", "ip2region", name),
+		filepath.Join("..", "resource", "ip2region", name),
+		filepath.Join("server", "resource", "ip2region", name),
+	}
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "resource", "ip2region", name))
+	}
+	for _, candidate := range candidates {
+		if stat, err := os.Stat(candidate); err == nil && !stat.IsDir() {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func formatBlogIPRegion(region string) string {
+	parts := strings.Split(region, "|")
+	formatted := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" || part == "0" {
+			continue
+		}
+		formatted = append(formatted, part)
+	}
+	return strings.Join(formatted, " ")
 }
 
 func BlogParseUserAgent(ua string) (os string, browser string) {
