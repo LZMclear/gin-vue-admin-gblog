@@ -8,10 +8,13 @@
               <div class="writer-title">{{ pageTitle }}</div>
               <div class="writer-subtitle">
                 {{ contentStats.words }} 字 · {{ form.readTime || 0 }} 分钟阅读
+                <span v-if="draftStatusText"> · {{ draftStatusText }}</span>
               </div>
             </div>
             <div class="writer-actions">
               <el-button icon="Back" @click="$router.back()">返回</el-button>
+              <el-button icon="DocumentAdd" @click="saveDraft">保存草稿</el-button>
+              <el-button icon="Delete" @click="clearDraftCache">清空缓存</el-button>
               <el-button type="primary" icon="Check" @click="openPublishDialog">保存</el-button>
             </div>
           </div>
@@ -31,7 +34,7 @@
             </el-row>
 
             <el-form-item label="文章摘要" prop="description">
-              <mavon-editor
+              <MarkdownEditor
                 v-model="form.description"
                 height="260px"
                 placeholder="请输入文章摘要，支持 Markdown"
@@ -45,7 +48,7 @@
               <el-button size="small" icon="Refresh" @click="recalculateWords">重新统计</el-button>
             </div>
             <el-form-item prop="content">
-              <mavon-editor
+              <MarkdownEditor
                 ref="contentEditorRef"
                 v-model="form.content"
                 height="680px"
@@ -63,7 +66,7 @@
               <el-radio :label="2">私密</el-radio>
               <el-radio :label="3">密码保护</el-radio>
             </el-radio-group>
-            <el-form-item v-if="radio === 3" label="访问密码">
+            <el-form-item v-if="radio === 3" label="访问密码" prop="password">
               <el-input v-model="form.password" show-password clearable />
             </el-form-item>
             <div v-if="radio !== 2" class="switch-grid">
@@ -151,7 +154,7 @@
       </div>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" icon="Check" @click="submit">保存</el-button>
+        <el-button type="primary" icon="Check" :loading="isSubmitting" @click="submit">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -164,6 +167,25 @@
     getBlogById,
     updateBlog
   } from '@/api/blog/article'
+  import MarkdownEditor from '@/components/blog/MarkdownEditor.vue'
+
+  const createEmptyForm = () => ({
+    title: '',
+    firstPicture: '',
+    description: '',
+    content: '',
+    cate: null,
+    tagList: [],
+    words: 0,
+    readTime: 0,
+    views: 0,
+    appreciation: false,
+    recommend: false,
+    commentEnabled: false,
+    top: false,
+    published: false,
+    password: '',
+  })
 
   const countMarkdownWords = (content = '') => {
     const words = content
@@ -175,30 +197,19 @@
 
   export default {
     name: 'BlogWriteArticle',
+    components: {
+      MarkdownEditor
+    },
     data() {
       return {
         categoryList: [],
         tagList: [],
         dialogVisible: false,
+        lastDraftSavedAt: null,
+        isSubmitting: false,
         radio: 1,
         autoWords: true,
-        form: {
-          title: '',
-          firstPicture: '',
-          description: '',
-          content: '',
-          cate: null,
-          tagList: [],
-          words: 0,
-          readTime: 0,
-          views: 0,
-          appreciation: false,
-          recommend: false,
-          commentEnabled: false,
-          top: false,
-          published: false,
-          password: '',
-        },
+        form: createEmptyForm(),
         formRules: {
           title: [{ required: true, message: '请输入标题', trigger: 'change' }],
           firstPicture: [{ required: true, message: '请输入首图链接', trigger: 'change' }],
@@ -207,6 +218,13 @@
           cate: [{ required: true, message: '请选择分类', trigger: 'change' }],
           tagList: [{ required: true, message: '请选择标签', trigger: 'change' }],
           words: [{ required: true, message: '请输入文章字数', trigger: 'change' }],
+          password: [{ validator: (rule, value, callback) => {
+            if (this.radio === 3 && !value) {
+              callback(new Error('密码保护模式必须填写密码'))
+              return
+            }
+            callback()
+          }, trigger: 'change' }],
         },
       }
     },
@@ -225,6 +243,17 @@
         if (this.radio === 1) return '公开'
         if (this.radio === 2) return '私密'
         return '密码保护'
+      },
+      draftKey() {
+        return `blog-write-draft:${this.$route.params.id || 'new'}`
+      },
+      draftStatusText() {
+        if (!this.lastDraftSavedAt) return ''
+        const time = new Date(this.lastDraftSavedAt).toLocaleTimeString('zh-CN', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        return `草稿已保存 ${time}`
       }
     },
     watch: {
@@ -241,6 +270,8 @@
       this.getData()
       if (this.$route.params.id) {
         this.getBlog(this.$route.params.id)
+      } else {
+        this.restoreDraft()
       }
     },
     methods: {
@@ -252,18 +283,21 @@
       },
       getBlog(id) {
         getBlogById(id).then(res => {
-          this.computeCategoryAndTag(res.data)
-          this.form = res.data
+          this.form = this.normalizeBlogForm(res.data)
           this.autoWords = false
           this.radio = this.form.published ? (this.form.password !== '' ? 3 : 1) : 2
+          this.restoreDraft()
         })
       },
-      computeCategoryAndTag(blog) {
-        blog.cate = blog.category.id
-        blog.tagList = []
-        blog.tags.forEach(item => {
-          blog.tagList.push(item.id)
-        })
+      normalizeBlogForm(blog = {}) {
+        return {
+          ...createEmptyForm(),
+          ...blog,
+          cate: blog.category?.id ?? blog.cate ?? blog.categoryId ?? null,
+          tagList: Array.isArray(blog.tags)
+            ? blog.tags.map(item => item.id)
+            : (Array.isArray(blog.tagList) ? blog.tagList : [])
+        }
       },
       recalculateWords() {
         this.autoWords = true
@@ -273,45 +307,133 @@
         if (this.autoWords || !this.form.words) {
           this.recalculateWords()
         }
-        this.dialogVisible = true
+        this.$refs.formRef.validate(valid => {
+          if (!valid) {
+            return this.msgError('请填写必要的表单项')
+          }
+          this.dialogVisible = true
+        })
       },
       submit() {
-        if (this.radio === 3 && (this.form.password === '' || this.form.password === null)) {
-          return this.msgError('密码保护模式必须填写密码！')
-        }
         this.$refs.formRef.validate(valid => {
           if (valid) {
-            if (this.radio === 2) {
-              this.form.appreciation = false
-              this.form.recommend = false
-              this.form.commentEnabled = false
-              this.form.top = false
-              this.form.published = false
-            } else {
-              this.form.published = true
-            }
-            if (this.radio !== 3) {
-              this.form.password = ''
-            }
-            if (this.$route.params.id) {
-              this.form.category = null
-              this.form.tags = null
-              updateBlog(this.form).then(res => {
-                this.msgSuccess(res.msg)
-                this.$router.push('/layout/gblog/list')
-              })
-            } else {
-              createBlog(this.form).then(res => {
-                this.msgSuccess(res.msg)
-                this.$router.push('/layout/gblog/list')
-              })
-            }
+            this.isSubmitting = true
+            const payload = this.buildSubmitPayload()
+            const request = this.$route.params.id ? updateBlog(payload) : createBlog(payload)
+            request.then(res => {
+              this.clearDraftCache(false)
+              this.msgSuccess(res.msg)
+              this.$router.push('/layout/gblog/list')
+            }).finally(() => {
+              this.isSubmitting = false
+            })
           } else {
             this.dialogVisible = false
             return this.msgError('请填写必要的表单项')
           }
         })
-      }
+      },
+      buildSubmitPayload() {
+        const payload = {
+          ...this.form,
+          category: null,
+          tags: null
+        }
+
+        if (this.radio === 2) {
+          payload.appreciation = false
+          payload.recommend = false
+          payload.commentEnabled = false
+          payload.top = false
+          payload.published = false
+        } else {
+          payload.published = true
+        }
+
+        if (this.radio !== 3) {
+          payload.password = ''
+        }
+
+        return payload
+      },
+      serializeDraftForm() {
+        const source = this.form || {}
+        return {
+          ...createEmptyForm(),
+          id: source.id,
+          title: source.title,
+          firstPicture: source.firstPicture,
+          description: source.description,
+          content: source.content,
+          cate: source.cate,
+          tagList: Array.isArray(source.tagList) ? source.tagList : [],
+          words: source.words,
+          readTime: source.readTime,
+          views: source.views,
+          appreciation: source.appreciation,
+          recommend: source.recommend,
+          commentEnabled: source.commentEnabled,
+          top: source.top,
+          published: source.published,
+          password: source.password,
+        }
+      },
+      saveDraft() {
+        if (!this.hasDraftContent()) {
+          return this.msgError('没有可保存的草稿内容')
+        }
+        const payload = {
+          savedAt: Date.now(),
+          radio: this.radio,
+          autoWords: this.autoWords,
+          form: this.serializeDraftForm()
+        }
+
+        localStorage.setItem(this.draftKey, JSON.stringify(payload))
+        this.lastDraftSavedAt = payload.savedAt
+        this.msgSuccess('草稿已保存到本地缓存')
+      },
+      restoreDraft() {
+        const rawDraft = localStorage.getItem(this.draftKey)
+        if (rawDraft) {
+          try {
+            const draft = JSON.parse(rawDraft)
+            if (draft?.form && this.hasDraftContent(draft.form)) {
+              this.form = {
+                ...createEmptyForm(),
+                ...this.form,
+                ...draft.form
+              }
+              this.radio = draft.radio || this.radio
+              this.autoWords = draft.autoWords ?? this.autoWords
+              this.lastDraftSavedAt = draft.savedAt || null
+              this.$message.success('已恢复本地草稿')
+            }
+          } catch (error) {
+            localStorage.removeItem(this.draftKey)
+          }
+        }
+      },
+      clearDraftCache(showMessage = true) {
+        localStorage.removeItem(this.draftKey)
+        this.lastDraftSavedAt = null
+        if (showMessage) {
+          this.msgSuccess('本地缓存已清空')
+        }
+      },
+      hasDraftContent(form = this.form) {
+        if (!form) return false
+        const textFields = [
+          form.title,
+          form.firstPicture,
+          form.description,
+          form.content,
+          form.password
+        ]
+        return textFields.some(value => String(value || '').trim()) ||
+          Boolean(form.cate) ||
+          (Array.isArray(form.tagList) && form.tagList.length > 0)
+      },
     }
   }
 </script>

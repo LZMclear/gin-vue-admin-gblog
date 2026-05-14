@@ -27,76 +27,60 @@
 				<div v-if="loadingContent" class="docs-empty">文档加载中...</div>
 				<div v-else-if="error" class="docs-empty error">{{ error }}</div>
 				<template v-else>
-					<div class="docs-meta" v-if="doc.path">
-						<span>{{ doc.path }}</span>
-						<a v-if="doc.editUrl" :href="doc.editUrl" target="_blank" rel="noopener noreferrer">
-							<i class="github icon"></i>在 GitHub 上编辑
-						</a>
-					</div>
-					<header v-if="doc.path" class="docs-doc-header">
-						<h1>{{ docFileTitle }}</h1>
-						<div class="docs-doc-stats">
-							<span>作者：Gvto</span>
-							<span>字数：{{ docWordCount }}</span>
-							<span>阅读：约 {{ docReadMinutes }} 分钟</span>
+					<header v-if="doc.path" class="blog-header">
+						<div class="blog-header-top">
+							<div class="blog-header-left">
+								<span class="docs-path">{{ doc.path }}</span>
+							</div>
+							<a v-if="doc.editUrl" :href="doc.editUrl" target="_blank" rel="noopener noreferrer" class="header-category">
+								<i class="github icon"></i>在 GitHub 上编辑
+							</a>
+						</div>
+						<h1 class="blog-title">{{ docFileTitle }}</h1>
+						<div class="blog-meta">
+							<span><i class="user outline icon"></i>作者：Gvto</span>
+							<span><i class="book icon"></i>字数 {{ docWordCount }}</span>
+							<span><i class="clock outline icon"></i>阅读时长 {{ docReadMinutes }} 分钟</span>
+							<button class="meta-action" type="button" @click.prevent="bigFontSize=!bigFontSize" title="切换字体大小">
+								<i class="font icon"></i>
+							</button>
 						</div>
 					</header>
-					<div class="typo js-toc-content match-braces rainbow-braces" v-viewer v-html="doc.content"></div>
+					<div class="ui middle aligned mobile reversed stackable">
+						<div class="ui grid m-margin-lr">
+							<div
+								class="typo js-toc-content m-padded-tb-small match-braces rainbow-braces"
+								v-viewer
+								:class="{'m-big-fontsize':bigFontSize}"
+								v-html="doc.content"
+							></div>
+						</div>
+					</div>
 				</template>
 			</div>
 		</main>
 
 		<aside class="docs-toc m-mobile-hide">
-			<div class="docs-panel docs-toc-panel">
-				<div class="docs-panel-title">
-					<i class="list ul icon"></i>
-					<button
-						v-if="collapsibleTocItems.length"
-						type="button"
-						class="docs-toc-collapse-all"
-						@click="toggleAllToc"
-					>
-						<i :class="isAllTocCollapsed ? 'angle double down icon' : 'angle double up icon'"></i>
-					</button>
-					<span>此页内容</span>
-				</div>
-				<div v-if="tocItems.length === 0" class="docs-toc-empty">暂无目录</div>
-				<ul v-else class="docs-toc-list">
-					<li
-						v-for="item in visibleTocItems"
-						:key="item.id"
-						:class="['level-' + item.level, {active: item.id === activeTocId, collapsed: isTocCollapsed(item)}]"
-					>
-						<div class="docs-toc-row">
-							<button
-								v-if="item.level === 1 && hasTocChildren(item)"
-								type="button"
-								class="docs-toc-toggle"
-								@click.stop="toggleToc(item)"
-							>
-								<i :class="isTocCollapsed(item) ? 'caret right icon' : 'caret down icon'"></i>
-							</button>
-							<span v-else class="docs-toc-toggle-placeholder"></span>
-							<a href="" @click.prevent="scrollToHeading(item.id)">
-								<span class="toc-number">{{ item.number }}</span>
-								<span>{{ item.text }}</span>
-							</a>
-						</div>
-					</li>
-				</ul>
-			</div>
+			<Tocbot
+				title="文档目录"
+				empty-text="暂无目录"
+				content-selector=".docs-page .js-toc-content"
+				:refresh-key="doc.path"
+				:number-content-headings="true"
+			/>
 		</aside>
 	</div>
 </template>
 
 <script>
 	import DocTree from '@/components/docs/DocTree'
+	import Tocbot from '@/components/sidebar/Tocbot'
 	import {getDocContent, getDocsTree} from '@/api/docs'
 	import {isSuccess} from '@/util/gvaResponse'
 
 	export default {
 		name: 'Docs',
-		components: {DocTree},
+		components: {DocTree, Tocbot},
 		data() {
 			return {
 				tree: [],
@@ -109,9 +93,7 @@
 				loadingTree: false,
 				loadingContent: false,
 				error: '',
-				tocItems: [],
-				activeTocId: '',
-				collapsedTocIds: {}
+				bigFontSize: false
 			}
 		},
 		computed: {
@@ -136,28 +118,6 @@
 				}
 				walk(this.tree)
 				return result
-			},
-			visibleTocItems() {
-				const result = []
-				let collapsedParent = ''
-				this.tocItems.forEach(item => {
-					if (item.level === 1) {
-						collapsedParent = this.collapsedTocIds[item.id] ? item.id : ''
-						result.push(item)
-						return
-					}
-					if (!collapsedParent) {
-						result.push(item)
-					}
-				})
-				return result
-			},
-			collapsibleTocItems() {
-				return this.tocItems.filter(item => item.level === 1 && this.hasTocChildren(item))
-			},
-			isAllTocCollapsed() {
-				return this.collapsibleTocItems.length > 0
-					&& this.collapsibleTocItems.every(item => this.collapsedTocIds[item.id])
 			},
 			docFileTitle() {
 				const filename = (this.doc.path || '').split('/').pop() || this.doc.title || 'README'
@@ -191,16 +151,6 @@
 		created() {
 			this.loadTree()
 		},
-		mounted() {
-			window.addEventListener('scroll', this.updateActiveToc, {passive: true})
-		},
-		beforeDestroy() {
-			window.removeEventListener('scroll', this.updateActiveToc)
-		},
-		beforeRouteLeave(to, from, next) {
-			this.tocItems = []
-			next()
-		},
 		methods: {
 			loadTree() {
 				this.loadingTree = true
@@ -226,9 +176,6 @@
 			loadContent(path) {
 				this.loadingContent = true
 				this.error = ''
-				this.tocItems = []
-				this.activeTocId = ''
-				this.collapsedTocIds = {}
 				getDocContent(path).then(res => {
 					if (!isSuccess(res)) {
 						this.error = res.msg || '获取文档内容失败'
@@ -242,8 +189,6 @@
 						if (window.Prism && typeof window.Prism.highlightAll === 'function') {
 							window.Prism.highlightAll()
 						}
-						this.buildToc()
-						this.updateActiveToc()
 					})
 				}).catch(() => {
 					this.error = '获取文档内容失败'
@@ -290,125 +235,6 @@
 				}
 				return ''
 			},
-			buildToc() {
-				const content = this.$el.querySelector('.js-toc-content')
-				if (!content) {
-					this.tocItems = []
-					return
-				}
-				const usedIds = new Set()
-				const counters = [0, 0]
-				this.tocItems = Array.from(content.querySelectorAll('h1,h2'))
-					.map((heading, index) => {
-						const text = heading.textContent.trim()
-						if (!text) {
-							return null
-						}
-						const level = Number(heading.tagName.slice(1))
-						const number = this.nextHeadingNumber(counters, level)
-						let id = heading.getAttribute('id') || this.slugify(text) || `doc-heading-${index + 1}`
-						const baseId = id
-						let count = 1
-						while (usedIds.has(id)) {
-							count += 1
-							id = `${baseId}-${count}`
-						}
-						usedIds.add(id)
-						heading.setAttribute('id', id)
-						this.applyHeadingNumber(heading, number)
-						return {
-							id,
-							text,
-							level,
-							number
-						}
-					})
-					.filter(Boolean)
-			},
-			hasTocChildren(item) {
-				const index = this.tocItems.findIndex(tocItem => tocItem.id === item.id)
-				return index >= 0 && this.tocItems[index + 1] && this.tocItems[index + 1].level === 2
-			},
-			isTocCollapsed(item) {
-				return Boolean(this.collapsedTocIds[item.id])
-			},
-			toggleToc(item) {
-				if (this.collapsedTocIds[item.id]) {
-					this.$delete(this.collapsedTocIds, item.id)
-				} else {
-					this.$set(this.collapsedTocIds, item.id, true)
-				}
-			},
-			toggleAllToc() {
-				if (this.isAllTocCollapsed) {
-					this.collapsedTocIds = {}
-					return
-				}
-				const next = {}
-				this.collapsibleTocItems.forEach(item => {
-					next[item.id] = true
-				})
-				this.collapsedTocIds = next
-			},
-			nextHeadingNumber(counters, level) {
-				const index = Math.max(0, Math.min(level - 1, counters.length - 1))
-				counters[index] += 1
-				for (let i = index + 1; i < counters.length; i += 1) {
-					counters[i] = 0
-				}
-				return counters.slice(0, index + 1).filter(Boolean).join('.')
-			},
-			applyHeadingNumber(heading, number) {
-				const oldNumber = heading.querySelector(':scope > .docs-heading-number')
-				if (oldNumber) {
-					oldNumber.remove()
-				}
-				const numberEl = document.createElement('span')
-				numberEl.className = 'docs-heading-number'
-				numberEl.textContent = number
-				heading.insertBefore(numberEl, heading.firstChild)
-			},
-			scrollToHeading(id) {
-				const heading = this.$el.querySelector(`#${window.CSS && CSS.escape ? CSS.escape(id) : id}`)
-				if (!heading) {
-					return
-				}
-				const top = heading.getBoundingClientRect().top + window.pageYOffset - 62
-				window.scrollTo({
-					top,
-					behavior: 'smooth'
-				})
-				this.activeTocId = id
-				if (this.$route.hash !== `#${id}`) {
-					this.$router.replace({name: 'docs', query: this.$route.query, hash: `#${id}`}).catch(() => {})
-				}
-			},
-			updateActiveToc() {
-				const items = this.visibleTocItems
-				if (!items.length) {
-					return
-				}
-				let current = items[0].id
-				for (const item of items) {
-					const heading = this.$el.querySelector(`#${window.CSS && CSS.escape ? CSS.escape(item.id) : item.id}`)
-					if (!heading) {
-						continue
-					}
-					if (heading.getBoundingClientRect().top <= 90) {
-						current = item.id
-					} else {
-						break
-					}
-				}
-				this.activeTocId = current
-			},
-			slugify(text) {
-				return text
-					.trim()
-					.toLowerCase()
-					.replace(/\s+/g, '-')
-					.replace(/[^\w\u4e00-\u9fa5-]/g, '')
-			}
 		}
 	}
 </script>
@@ -425,13 +251,16 @@
 		display: none;
 	}
 
-	.docs-sidebar,
-	.docs-toc {
+	.docs-sidebar {
 		position: sticky;
 		top: 62px;
 		max-height: calc(100vh - 82px);
 		overflow: auto;
 		scrollbar-width: thin;
+	}
+
+	.docs-toc {
+		position: relative;
 	}
 
 	.docs-panel {
@@ -454,89 +283,139 @@
 		font-size: 15px;
 	}
 
-	.docs-toc-collapse-all {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 26px;
-		height: 26px;
-		margin-left: auto;
-		padding: 0;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		background: #fff;
-		color: #64748b;
-		cursor: pointer;
-	}
-
-	.docs-toc-collapse-all:hover {
-		border-color: #bfdbfe;
-		background: #eff6ff;
-		color: #2563eb;
-	}
-
-	.docs-toc-collapse-all i {
-		margin: 0 !important;
-	}
-
 	.docs-content {
 		min-width: 0;
 	}
 
 	.docs-article {
+		position: relative;
 		min-height: 520px;
+		overflow: hidden;
+		background: #fff !important;
 		border: 1px solid #e5e7eb !important;
 		border-radius: 6px !important;
 		box-shadow: 0 10px 30px rgba(15, 23, 42, .035);
 	}
 
-	.docs-meta {
+	.blog-header {
+		margin: 0 1rem 24px;
+		padding: 0 0 24px;
+		border-bottom: 1px solid #e5e7eb;
+		background: #fff;
+	}
+
+	.blog-header-top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		padding-bottom: 14px;
+		gap: 16px;
 		margin-bottom: 18px;
-		border-bottom: 1px solid #e5e7eb;
-		color: #6b7280;
-		font-size: 13px;
 	}
 
-	.docs-meta span {
+	.blog-header-left {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 8px;
+		color: #6b7280;
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	.docs-path {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.docs-meta a {
+	.header-category {
+		display: inline-flex;
+		flex: 0 0 auto;
+		min-height: 30px;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 7px 12px;
+		border-radius: 6px;
+		background: #eff6ff;
 		color: #2563eb;
+		font-size: 13px;
+		font-weight: 700;
+		line-height: 1;
 		white-space: nowrap;
 	}
 
-	.docs-doc-header {
-		padding: 12px 0 24px;
-		margin-bottom: 22px;
-		border-bottom: 1px solid #edf2f7;
-		text-align: center;
+	.header-category:hover {
+		background: #dbeafe;
+		color: #1d4ed8;
 	}
 
-	.docs-doc-header h1 {
-		margin: 0 0 12px;
-		color: #111827;
-		font-size: 30px;
-		line-height: 1.25;
-		font-weight: 800;
-	}
-
-	.docs-doc-stats {
-		display: flex;
+	.header-category i,
+	.blog-meta i,
+	.meta-action i {
+		display: inline-flex;
+		width: 16px;
+		height: 16px;
 		align-items: center;
 		justify-content: center;
+		margin: 0 !important;
+		line-height: 1 !important;
+	}
+
+	.blog-title {
+		margin: 0;
+		color: #0f172a;
+		font-size: 34px;
+		font-weight: 800;
+		letter-spacing: 0;
+		line-height: 1.25;
+	}
+
+	.blog-meta {
+		display: flex;
 		flex-wrap: wrap;
-		gap: 8px 16px;
+		align-items: center;
+		gap: 14px;
+		margin-top: 20px;
 		color: #6b7280;
-		font-size: 13px;
+		font-size: 14px;
+		font-weight: 400;
+	}
+
+	.blog-meta span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		line-height: 1;
+	}
+
+	.meta-action {
+		display: inline-flex;
+		width: 28px;
+		height: 28px;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: #64748b;
+		cursor: pointer;
+		font-family: inherit;
+	}
+
+	.meta-action:hover {
+		background: #dbeafe;
+		color: #2563eb;
+	}
+
+	.docs-article .typo {
+		width: 100%;
+	}
+
+	.docs-article .ui.grid.m-margin-lr {
+		margin-right: 0 !important;
+		margin-left: 0 !important;
 	}
 
 	.docs-empty {
@@ -547,12 +426,6 @@
 
 	.docs-empty.error {
 		color: #dc2626;
-	}
-
-	.docs-toc-empty {
-		padding: 12px 4px;
-		color: #9ca3af;
-		font-size: 13px;
 	}
 
 	h1::before, h2::before, h3::before, h4::before, h5::before, h6::before {
@@ -585,90 +458,28 @@
 			border-radius: 0 !important;
 		}
 
-		.docs-meta {
+		.blog-header {
+			margin: 0 1rem 20px;
+			padding: 0 0 20px;
+		}
+
+		.blog-header-top,
+		.blog-header-left {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+
+		.header-category {
+			align-self: flex-start;
+		}
+
+		.blog-title {
+			font-size: 28px;
 		}
 	}
 </style>
 
 <style>
-	.docs-toc-list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-
-	.docs-toc-list li {
-		margin: 0;
-	}
-
-	.docs-toc-row {
-		display: flex;
-		align-items: flex-start;
-		gap: 4px;
-	}
-
-	.docs-toc-toggle,
-	.docs-toc-toggle-placeholder {
-		flex: 0 0 18px;
-		width: 18px;
-		height: 30px;
-	}
-
-	.docs-toc-toggle {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		color: #64748b;
-		cursor: pointer;
-	}
-
-	.docs-toc-toggle:hover {
-		color: #2563eb;
-	}
-
-	.docs-toc-toggle i {
-		margin: 0 !important;
-	}
-
-	.docs-toc-list a {
-		flex: 1 1 auto;
-		min-width: 0;
-		display: flex;
-		gap: 7px;
-		padding: 6px 8px;
-		border-left: 2px solid transparent;
-		border-radius: 4px;
-		color: #4b5563;
-		font-weight: 300;
-		line-height: 1.35;
-		word-break: break-word;
-	}
-
-	.docs-toc-list .toc-number {
-		flex: 0 0 auto;
-		min-width: 22px;
-		color: #2563eb;
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.docs-toc-list a:hover,
-	.docs-toc-list li.active a {
-		background: #eff6ff;
-		border-left-color: #2563eb;
-		color: #2563eb !important;
-		font-weight: 700;
-	}
-
-	.docs-toc-list .level-2 {
-		padding-left: 10px;
-	}
-
 	.docs-page .js-toc-content h1,
 	.docs-page .js-toc-content h2 {
 		display: flex;
@@ -699,3 +510,4 @@
 		font-variant-numeric: tabular-nums;
 	}
 </style>
+

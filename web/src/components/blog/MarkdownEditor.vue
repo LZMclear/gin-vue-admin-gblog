@@ -96,6 +96,10 @@
   const fullscreen = ref(false)
 
   const marked = new Marked(
+    {
+      gfm: true,
+      breaks: true
+    },
     markedHighlight({
       langPrefix: 'hljs language-',
       highlight(code, lang) {
@@ -135,14 +139,14 @@
 
   const tools = [
     { key: 'bold', label: '加粗', icon: EditPen, prefix: '**', suffix: '**', sample: '加粗文字' },
-    { key: 'quote', label: '引用', icon: ChatLineSquare, prefix: '> ', suffix: '', sample: '引用内容' },
-    { key: 'list', label: '无序列表', icon: List, prefix: '- ', suffix: '', sample: '列表项' },
-    { key: 'code', label: '代码块', icon: Tickets, prefix: '```js\n', suffix: '\n```', sample: 'console.log("hello")' },
+    { key: 'quote', label: '引用', icon: ChatLineSquare, block: '> 引用内容' },
+    { key: 'list', label: '无序列表', icon: List, block: '- 列表项' },
+    { key: 'code', label: '代码块', icon: Tickets, block: '```js\nconsole.log("hello")\n```' },
     { key: 'link', label: '链接', icon: Link, prefix: '[', suffix: '](https://)', sample: '链接文字' },
     { key: 'image', label: '图片', icon: Picture, prefix: '![', suffix: '](https://)', sample: '图片描述' },
     { key: 'table', label: '表格', icon: Files, block: '| 标题 | 内容 |\n| --- | --- |\n| 示例 | 文本 |' },
-    { key: 'divider', label: '分割线', icon: MagicStick, block: '\n---\n' },
-    { key: 'heading', label: '标题', icon: EditPen, prefix: '## ', suffix: '', sample: '标题' }
+    { key: 'divider', label: '分割线', icon: MagicStick, block: '---' },
+    { key: 'heading', label: '标题', icon: EditPen, block: '## 标题' }
   ]
 
   const focusTextarea = () => nextTick(() => textareaRef.value?.focus())
@@ -165,17 +169,45 @@
     })
   }
 
+  const insertBlock = (block) => {
+    const textarea = textareaRef.value
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const before = value.value.slice(0, start)
+    const after = value.value.slice(end)
+    const selected = value.value.slice(start, end)
+    const content = selected || block
+    const leading = before && !before.endsWith('\n') ? '\n' : ''
+    const trailing = after && !after.startsWith('\n') ? '\n' : ''
+    const text = `${leading}${content}\n${trailing}`
+
+    value.value = `${before}${text}${after}`
+
+    nextTick(() => {
+      const cursorStart = start + leading.length
+      const cursorEnd = cursorStart + content.length
+      textarea.setSelectionRange(cursorStart, cursorEnd)
+      textarea.focus()
+    })
+  }
+
   const insertMarkdown = (tool) => {
     if (tool.block) {
-      insertText(`${tool.block}\n`, '', '')
+      insertBlock(tool.block)
       return
     }
     insertText(tool.prefix, tool.suffix, tool.sample)
   }
 
   const copyContent = async () => {
-    await navigator.clipboard.writeText(value.value)
-    ElMessage.success('已复制')
+    try {
+      await navigator.clipboard.writeText(value.value)
+      ElMessage.success('已复制')
+    } catch (error) {
+      ElMessage.error('复制失败')
+    }
   }
 
   defineExpose({ focusTextarea })
@@ -320,6 +352,41 @@
   :deep(pre),
   :deep(table) {
     margin: 0 0 14px;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 1.6em;
+  }
+
+  :deep(ul) {
+    list-style: disc;
+  }
+
+  :deep(ol) {
+    list-style: decimal;
+  }
+
+  :deep(li) {
+    margin: 4px 0;
+  }
+
+  :deep(li > ul) {
+    margin: 4px 0 0;
+    list-style: circle;
+  }
+
+  :deep(li > ol) {
+    margin: 4px 0 0;
+  }
+
+  :deep(.contains-task-list) {
+    padding-left: 1.2em;
+    list-style: none;
+  }
+
+  :deep(input[type='checkbox']) {
+    margin-right: 6px;
   }
 
   :deep(blockquote) {

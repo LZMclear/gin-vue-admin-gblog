@@ -14,7 +14,7 @@
 					<div v-else class="ui stackable grid">
 						<!--左侧-->
 						<div class="three wide column m-mobile-hide">
-							<Introduction :class="{'m-display-none':focusMode}"/>
+							<Introduction :class="[{'m-display-none':focusMode}, {'blog-left-sticky': $route.name==='blog'}]"/>
 						</div>
 						<!--中间-->
 						<div class="ten wide column">
@@ -171,5 +171,11 @@
 
 	.m-display-none {
 		display: none !important;
+	}
+
+	.blog-left-sticky {
+		position: sticky;
+		top: 60px;
+		z-index: 10;
 	}
 </style>
