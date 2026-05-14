@@ -65,7 +65,6 @@ Vue.prototype.scrollToTop = function () {
 
 
 Vue.config.productionTip = false
-Vue.config.ignoredElements = ['meting-js']
 
 new Vue({
 	router,
