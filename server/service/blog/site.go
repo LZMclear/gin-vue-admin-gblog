@@ -3,6 +3,7 @@ package blog
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogModel "github.com/flipped-aurora/gin-vue-admin/server/model/blog"
+	blogResp "github.com/flipped-aurora/gin-vue-admin/server/model/blog/response"
 )
 
 type SiteService struct{}
@@ -35,11 +36,23 @@ func (s *SiteService) GetSiteInfo() (map[string]interface{}, error) {
 		return nil, err
 	}
 
+	var stats blogResp.SiteStats
+	if err := global.GVA_DB.Model(&blogModel.Blog{}).Where("is_published = ?", true).Count(&stats.ArticleCount).Error; err != nil {
+		return nil, err
+	}
+	if err := global.GVA_DB.Model(&blogModel.Category{}).Count(&stats.CategoryCount).Error; err != nil {
+		return nil, err
+	}
+	if err := global.GVA_DB.Model(&blogModel.Tag{}).Count(&stats.TagCount).Error; err != nil {
+		return nil, err
+	}
+
 	result["siteSettings"] = siteSettings
 	result["categoryList"] = categories
 	result["tagList"] = tags
 	result["newBlogList"] = newBlogs
 	result["randomBlogList"] = randomBlogs
+	result["siteStats"] = stats
 
 	return result, nil
 }

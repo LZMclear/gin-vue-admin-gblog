@@ -7,7 +7,7 @@
 						<span>基础设置</span>
 					</template>
 					<el-form label-position="right" label-width="100px">
-						<el-form-item :label="item.nameZh" v-for="item in typeMap.type1" :key="item.id">
+						<el-form-item :label="item.nameZh" v-for="item in typeMap.type1" :key="item.id || item.key || item.nameEn">
 							<el-input v-model="item.value" size="small"></el-input>
 						</el-form-item>
 					</el-form>
@@ -19,7 +19,7 @@
 						<span>资料卡</span>
 					</template>
 					<el-form label-position="right" label-width="100px">
-						<el-form-item :label="item.nameZh" v-for="item in typeMap.type2" :key="item.id">
+						<el-form-item :label="item.nameZh" v-for="item in typeMap.type2" :key="item.id || item.key || item.nameEn">
 							<div v-if="item.nameEn=='favorite'">
 								<el-col :span="20">
 									<el-input v-model="item.value" size="small"></el-input>
@@ -41,9 +41,25 @@
 		<el-row style="margin-top: 20px">
 			<el-card>
 				<template #header>
+					<div class="card-header">
+						<span>文档站设置</span>
+						<el-button type="success" size="small" icon="el-icon-refresh" :loading="syncingDocs" @click="handleSyncDocs">同步文档</el-button>
+					</div>
+				</template>
+				<el-form label-position="right" label-width="130px">
+					<el-form-item :label="item.nameZh" v-for="item in typeMap.type4" :key="item.id || item.key || item.nameEn">
+						<el-input v-model="item.value" size="small" :placeholder="docPlaceholder(item.nameEn)"></el-input>
+					</el-form-item>
+				</el-form>
+			</el-card>
+		</el-row>
+
+		<el-row style="margin-top: 20px">
+			<el-card>
+				<template #header>
 					<span>页脚徽标</span>
 				</template>
-				<el-form :inline="true" v-for="badge in typeMap.type3" :key="badge.id">
+				<el-form :inline="true" v-for="(badge, index) in typeMap.type3" :key="badge.id || badge.key || index">
 					<el-form-item label="title">
 						<el-input v-model="badge.value.title" size="small"></el-input>
 					</el-form-item>
@@ -75,7 +91,47 @@
 
 <script>
 	import {getSiteSettingData, update} from "@/api/blog/siteSetting";
-	import _ from 'lodash'
+	import {syncDocs} from "@/api/blog/docs";
+
+	const emptyTypeMap = () => ({
+		type1: [],
+		type2: [],
+		type3: [],
+		type4: []
+	})
+
+	const parseBadgeValue = (value) => {
+		const fallback = {
+			color: "",
+			subject: "",
+			title: "",
+			url: "",
+			value: ""
+		}
+
+		if (!value) {
+			return fallback
+		}
+
+		if (typeof value === 'object') {
+			return {
+				...fallback,
+				...value
+			}
+		}
+
+		try {
+			return {
+				...fallback,
+				...JSON.parse(value)
+			}
+		} catch (e) {
+			console.warn('Invalid badge site setting value:', value, e)
+			return fallback
+		}
+	}
+
+	const cloneTypeMap = (typeMap) => JSON.parse(JSON.stringify(typeMap))
 
 	export default {
 		name: 'BlogSiteSetting',
@@ -83,7 +139,8 @@
 		data() {
 			return {
 				deleteIds: [],
-				typeMap: {},
+				typeMap: emptyTypeMap(),
+				syncingDocs: false,
 			}
 		},
 		created() {
@@ -92,10 +149,27 @@
 		methods: {
 			getData() {
 				getSiteSettingData().then(res => {
-					this.typeMap = res.data
-					res.data.type3.forEach(item => {
-						item.value = JSON.parse(item.value)
+					const data = res.data || {}
+					const nextTypeMap = {
+						type1: Array.isArray(data.type1) ? data.type1 : [],
+						type2: Array.isArray(data.type2) ? data.type2 : [],
+						type3: Array.isArray(data.type3) ? data.type3 : [],
+						type4: Array.isArray(data.type4) ? data.type4 : []
+					}
+
+					nextTypeMap.type1.forEach(item => {
+						item.value = item.value || ''
 					})
+					nextTypeMap.type2.forEach(item => {
+						item.value = item.value || ''
+					})
+					nextTypeMap.type3.forEach(item => {
+						item.value = parseBadgeValue(item.value)
+					})
+					nextTypeMap.type4.forEach(item => {
+						item.value = item.value || ''
+					})
+					this.typeMap = nextTypeMap
 				})
 			},
 			addFavorite() {
@@ -161,7 +235,7 @@
 				}
 			},
 			submit() {
-				const result = _.cloneDeep(this.typeMap)
+				const result = cloneTypeMap(this.typeMap)
 				result.type3.forEach(item => {
 					item.value = JSON.stringify(item.value)
 				})
@@ -169,10 +243,30 @@
 				updateArr.push(...result.type1)
 				updateArr.push(...result.type2)
 				updateArr.push(...result.type3)
+				updateArr.push(...result.type4)
 				update(updateArr, this.deleteIds).then(res => {
 					this.deleteIds = []
 					this.getData()
 					this.msgSuccess(res.msg)
+				})
+			},
+			docPlaceholder(nameEn) {
+				const map = {
+					docsGithubRepo: '例如：https://github.com/Percygu/GolangGuide',
+					docsGithubBranch: '例如：main',
+					docsGithubRoot: '例如：src 或 docs',
+					docsGithubWebhookSecret: '可选：与 GitHub Webhook Secret 保持一致'
+				}
+				return map[nameEn] || ''
+			},
+			handleSyncDocs() {
+				this.syncingDocs = true
+				syncDocs().then(res => {
+					if (res && res.code === 0) {
+						this.msgSuccess(res.msg || '同步文档成功')
+					}
+				}).finally(() => {
+					this.syncingDocs = false
 				})
 			}
 		}
@@ -180,5 +274,9 @@
 </script>
 
 <style scoped>
-
+	.card-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
 </style>

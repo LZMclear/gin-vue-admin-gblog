@@ -3,6 +3,7 @@ package blog
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
+	commonReq "github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -38,4 +39,22 @@ func (a *VisitLogApi) DeleteVisitLog(c *gin.Context) {
 		return
 	}
 	response.OkWithMessage("删除访问日志成功", c)
+}
+
+func (a *VisitLogApi) DeleteVisitLogs(c *gin.Context) {
+	var req commonReq.IdsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	if len(req.Ids) == 0 {
+		response.FailWithMessage("请选择要删除的访问日志", c)
+		return
+	}
+	if err := visitLogService.DeleteByIds(req.Ids); err != nil {
+		global.GVA_LOG.Error("delete visit logs failed", zap.Error(err))
+		response.FailWithMessage("批量删除访问日志失败", c)
+		return
+	}
+	response.OkWithMessage("批量删除访问日志成功", c)
 }

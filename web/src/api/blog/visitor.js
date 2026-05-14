@@ -16,3 +16,11 @@ export function deleteVisitor(id) {
     data: { id }
   })
 }
+
+export function deleteVisitorsByIds(ids) {
+  return service({
+    url: '/admin/visitors',
+    method: 'DELETE',
+    data: { ids }
+  })
+}

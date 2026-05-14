@@ -19,4 +19,5 @@ type ServiceGroup struct {
 	OperationLogService OperationLogCompatService
 	TelegramService     TelegramService
 	AuthService         AuthService
+	DocsService         DocsService
 }

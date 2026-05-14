@@ -2,6 +2,7 @@ package blog
 
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,7 @@ func (a *ArticleApi) GetArticle(c *gin.Context) {
 		response.FailWithMessage("获取文章失败", c)
 		return
 	}
+	blogmw.SetVisitContent(c, data.Title)
 	response.OkWithData(data, c)
 }
 

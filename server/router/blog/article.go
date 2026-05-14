@@ -8,7 +8,7 @@ import (
 type ArticleRouter struct{}
 
 func (r *ArticleRouter) InitArticleRouter(PublicRouter *gin.RouterGroup) {
-	PublicRouter.Group("").Use(blogmw.VisitRecord("index")).GET("blogs", articleApi.GetArticleList)
-	PublicRouter.Group("").Use(blogmw.VisitRecord("blog")).GET("blog", articleApi.GetArticle)
-	PublicRouter.Group("").Use(blogmw.VisitRecord("search")).GET("searchBlog", articleApi.SearchBlog)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorIndex)).GET("blogs", articleApi.GetArticleList)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorBlog)).GET("blog", articleApi.GetArticle)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorSearch)).GET("searchBlog", articleApi.SearchBlog)
 }

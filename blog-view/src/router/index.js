@@ -28,6 +28,12 @@ const routes = [
 				meta: {title: '归档'}
 			},
 			{
+				path: '/docs',
+				name: 'docs',
+				component: () => import('@/views/docs/Docs'),
+				meta: {title: '文档站'}
+			},
+			{
 				path: '/blog/:id',
 				name: 'blog',
 				component: () => import('@/views/blog/Blog'),

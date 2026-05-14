@@ -39,5 +39,6 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	blogRouter.InitExceptionLogRouter(privateGroup)
 	blogRouter.InitOperationLogRouter(privateGroup)
 	blogRouter.InitTelegramRouter(publicGroup)
+	blogRouter.InitDocsRouter(privateGroup, publicGroup)
 
 }

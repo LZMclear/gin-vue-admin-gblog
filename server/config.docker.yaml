@@ -2,10 +2,10 @@
 
 # jwt configuration
 jwt:
-    signing-key: qmPlus
+    signing-key: gvto
     expires-time: 7d
     buffer-time: 1d
-    issuer: qmPlus
+    issuer: gvto
 # zap logger configuration
 zap:
     level: info
@@ -23,25 +23,25 @@ redis:
     #是否使用redis集群模式
     useCluster: false
     #使用集群模式addr和db默认无效
-    addr: 177.7.0.14:6379
+    addr: 43.138.33.205:6379
     password: ""
     db: 0
     clusterAddrs:
-        - "177.7.0.14:7000"
-        - "177.7.0.15:7001"
-        - "177.7.0.13:7002"
+        - "43.138.33.205:7000"
+        - "43.138.33.205:7001"
+        - "43.138.33.205:7002"
 
 # redis-list configuration
 redis-list:
     - name: cache           # 数据库的名称,注意: name 需要在 redis-list 中唯一
       useCluster: false     # 是否使用redis集群模式
-      addr: 177.7.0.14:6379  # 使用集群模式addr和db默认无效
+      addr: 43.138.33.205:6379  # 使用集群模式addr和db默认无效
       password: ""
       db: 0
       clusterAddrs:
-          - "177.7.0.14:7000"
-          - "177.7.0.15:7001"
-          - "177.7.0.13:7002"
+          - "43.138.33.205:7000"
+          - "43.138.33.205:7001"
+          - "43.138.33.205:7002"
 
 # mongo configuration
 mongo:
@@ -57,14 +57,14 @@ mongo:
     connect-timeout-ms: 0
     is-zap: false
     hosts:
-        - host: ''
-          port: ''
+        - host: 43.138.33.205
+          port: 27017
 
 # email configuration
 email:
-    to: xxx@qq.com
+    to: lz13526112262@163.com
     port: 465
-    from: xxx@163.com
+    from: lz13526112262@163.com
     host: smtp.163.com
     is-ssl: true
     secret: xxx

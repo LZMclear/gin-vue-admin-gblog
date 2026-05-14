@@ -3,12 +3,15 @@
 		<div class="ui segments m-box">
 			<div class="ui card">
 				<div class="image">
-					<img :src="introduction.avatar">
+					<img :src="introduction.avatar" loading="lazy" decoding="async">
 				</div>
-				<div class="content" align="center">
+				<div class="qq-avatar-wrap">
+					<img class="qq-avatar" :src="qqAvatar" alt="QQ avatar" loading="lazy" decoding="async">
+				</div>
+				<div class="content intro-content" align="center">
 					<div class="header">{{ introduction.name }}</div>
 					<!--彩色滚动字体-->
-					<div id="rollText" class="m-margin-top" v-if="introduction.rollText.length!=0"></div>
+					<div id="rollText" ref="rollText" class="m-margin-top" v-if="introduction.rollText.length!=0"></div>
 				</div>
 				<div class="extra content" align="center">
 					<a :href="introduction.github" v-if="introduction.github" target="_blank" class="ui circular icon button">
@@ -69,26 +72,53 @@
 
 	export default {
 		name: "Introduction",
+		data() {
+			return {
+				rollTextTimer: null
+			}
+		},
 		computed: {
-			...mapState(['introduction'])
+			...mapState(['introduction']),
+			qqAvatar() {
+				return 'https://q1.qlogo.cn/g?b=qq&nk=3135679861&s=640'
+			}
+		},
+		mounted() {
+			this.startRollText()
+		},
+		beforeDestroy() {
+			this.clearRollTextTimer()
 		},
 		watch: {
 			'introduction.rollText'() {
 				if (this.introduction.rollText.length != 0) {
-					//等待 id="rollText"的div加载完毕
-					this.$nextTick(() => {
-						this.rollText()
-					})
+					this.startRollText()
 				}
 			}
 		},
 		methods: {
+			startRollText() {
+				this.$nextTick(() => {
+					this.rollText()
+				})
+			},
+			clearRollTextTimer() {
+				if (this.rollTextTimer) {
+					clearTimeout(this.rollTextTimer)
+					this.rollTextTimer = null
+				}
+			},
 			rollText() {
-				let r = document.getElementById('rollText')
+				this.clearRollTextTimer()
+				let r = this.$refs.rollText
+				if (!r || !this.introduction.rollText || this.introduction.rollText.length === 0) {
+					return
+				}
 				let l = ""
 				let o = this.introduction.rollText.map(function (r) {
 					return r + ""
 				})
+				let vm = this
 				let a = 2
 				let g = 1
 				let s = 5
@@ -113,8 +143,11 @@
 				}
 
 				function i() {
+					if (!vm.$refs.rollText) {
+						return
+					}
 					let t = o[c.skillI]
-					c.step ? c.step-- : (c.step = g, c.prefixP < l.length ? (c.prefixP >= 0 && (c.text += l[c.prefixP]), c.prefixP++) : "forward" === c.direction ? c.skillP < t.length ? (c.text += t[c.skillP], c.skillP++) : c.delay ? c.delay-- : (c.direction = "backward", c.delay = a) : c.skillP > 0 ? (c.text = c.text.slice(0, -1), c.skillP--) : (c.skillI = (c.skillI + 1) % o.length, c.direction = "forward")), r.textContent = c.text, r.appendChild(n(c.prefixP < l.length ? Math.min(s, s + c.prefixP) : Math.min(s, t.length - c.skillP))), setTimeout(i, d)
+					c.step ? c.step-- : (c.step = g, c.prefixP < l.length ? (c.prefixP >= 0 && (c.text += l[c.prefixP]), c.prefixP++) : "forward" === c.direction ? c.skillP < t.length ? (c.text += t[c.skillP], c.skillP++) : c.delay ? c.delay-- : (c.direction = "backward", c.delay = a) : c.skillP > 0 ? (c.text = c.text.slice(0, -1), c.skillP--) : (c.skillI = (c.skillI + 1) % o.length, c.direction = "forward")), r.textContent = c.text, r.appendChild(n(c.prefixP < l.length ? Math.min(s, s + c.prefixP) : Math.min(s, t.length - c.skillP))), vm.rollTextTimer = setTimeout(i, d)
 				}
 
 				i()
@@ -124,12 +157,38 @@
 </script>
 
 <style scoped>
+	.qq-avatar-wrap {
+		position: relative;
+		z-index: 2;
+		height: 0;
+		text-align: center;
+	}
+
+	.qq-avatar {
+		width: 86px;
+		height: 86px;
+		margin-top: -43px;
+		border: 4px solid #fff;
+		border-radius: 50%;
+		object-fit: cover;
+		background: #fff;
+		box-shadow: 0 8px 22px rgba(15, 23, 42, .18);
+	}
+
+	.ui.card > .intro-content {
+		padding-top: 54px !important;
+		padding-bottom: 18px !important;
+		flex-grow: 0 !important;
+	}
+
 	.ui.circular.icon.button {
 		width: 38px;
 	}
 
 	#rollText {
 		font-size: 15px;
+		line-height: 1.6;
+		margin-top: 10px !important;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;

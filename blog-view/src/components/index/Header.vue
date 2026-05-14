@@ -1,13 +1,13 @@
 <template>
 	<header ref="header">
 		<div class="view">
-			<img ref="imgbg1" :src="defaultSettings.bg1" style="display: none;">
-			<div class="bg1" :style="{backgroundImage:'url('+defaultSettings.bg1+')'}"></div>
-			<div class="bg2" :style="{backgroundImage:'url('+defaultSettings.bg2+')'}"></div>
-			<div class="bg3" :style="{backgroundImage:'url('+defaultSettings.bg3+')'}" v-show="loaded"></div>
+			<img ref="imgbg1" :src="siteInfo.bg1" style="display: none;">
+			<div class="bg1" :style="{backgroundImage:'url('+siteInfo.bg1+')'}"></div>
+			<div class="bg2" :style="{backgroundImage:'url('+siteInfo.bg2+')'}"></div>
+			<div class="bg3" :style="{backgroundImage:'url('+siteInfo.bg3+')'}" v-show="loaded"></div>
 		</div>
-		<div class="text-malfunction" :data-word="defaultSettings.malfunctionText">
-			{{ defaultSettings.malfunctionText }}
+		<div class="text-malfunction" :data-word="siteInfo.malfunctionText">
+			{{ siteInfo.malfunctionText }}
 			<div class="line"></div>
 		</div>
 		<div class="wrapper">
@@ -20,18 +20,20 @@
 
 <script>
 	import {mapState} from 'vuex'
-	import defaultSettings from '@/settings'
 
 	export default {
 		name: "Header",
 		data() {
 			return {
 				loaded: false,
-				defaultSettings
+				startingPoint: 0,
+				handleMouseEnter: null,
+				handleMouseOut: null,
+				handleMouseMove: null
 			}
 		},
 		computed: {
-			...mapState(['clientSize'])
+			...mapState(['clientSize', 'siteInfo'])
 		},
 		watch: {
 			'clientSize.clientHeight'() {
@@ -48,20 +50,31 @@
 				this.loaded = true
 			}
 			this.setHeaderHeight()
-			let startingPoint
 			const header = this.$refs.header
-			header.addEventListener('mouseenter', (e) => {
-				startingPoint = e.clientX
-			})
-			header.addEventListener('mouseout', (e) => {
+			this.handleMouseEnter = (e) => {
+				this.startingPoint = e.clientX
+			}
+			this.handleMouseOut = () => {
 				header.classList.remove('moving')
 				header.style.setProperty('--percentage', 0.5)
-			})
-			header.addEventListener('mousemove', (e) => {
-				let percentage = (e.clientX - startingPoint) / window.outerWidth + 0.5
+			}
+			this.handleMouseMove = (e) => {
+				let percentage = (e.clientX - this.startingPoint) / window.outerWidth + 0.5
 				header.style.setProperty('--percentage', percentage)
 				header.classList.add('moving')
-			})
+			}
+			header.addEventListener('mouseenter', this.handleMouseEnter)
+			header.addEventListener('mouseout', this.handleMouseOut)
+			header.addEventListener('mousemove', this.handleMouseMove)
+		},
+		beforeDestroy() {
+			const header = this.$refs.header
+			if (!header) {
+				return
+			}
+			header.removeEventListener('mouseenter', this.handleMouseEnter)
+			header.removeEventListener('mouseout', this.handleMouseOut)
+			header.removeEventListener('mousemove', this.handleMouseMove)
 		},
 		methods: {
 			//根据可视窗口高度，动态改变首图大小

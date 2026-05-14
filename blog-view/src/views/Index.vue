@@ -10,10 +10,11 @@
 		<div class="main">
 			<div class="m-padded-tb-big">
 				<div class="ui container">
-					<div class="ui stackable grid">
+					<router-view v-if="isDocsPage"/>
+					<div v-else class="ui stackable grid">
 						<!--左侧-->
 						<div class="three wide column m-mobile-hide">
-							<Introduction :class="{'m-display-none':focusMode}"/>
+							<Introduction :class="[{'m-display-none':focusMode}, {'blog-left-sticky': $route.name==='blog'}]"/>
 						</div>
 						<!--中间-->
 						<div class="ten wide column">
@@ -27,6 +28,7 @@
 							<Tags :tagList="tagList" :class="{'m-display-none':focusMode}"/>
 							<!--只在文章页面显示目录-->
 							<Tocbot v-if="$route.name==='blog'"/>
+							<SiteAbout :stats="siteStats" :class="{'m-display-none':focusMode}"/>
 						</div>
 					</div>
 				</div>
@@ -36,13 +38,9 @@
 		<!--私密文章密码对话框-->
 		<BlogPasswordDialog/>
 
-		<!--APlayer-->
-		<div class="m-mobile-hide">
-			<meting-js :server="siteInfo.playlistServer" :id="siteInfo.playlistId" type="playlist" fixed="true" theme="#25CCF7" v-if="siteInfo.playlistServer && siteInfo.playlistId"></meting-js>
-		</div>
 		<!--回到顶部-->
 		<el-backtop style="box-shadow: none;background: none;z-index: 9999;">
-			<img src="/img/paper-plane.png" style="width: 40px;height: 40px;">
+			<img src="/img/paper-plane.png" loading="lazy" decoding="async" style="width: 40px;height: 40px;">
 		</el-backtop>
 		<!--底部footer-->
 		<Footer :siteInfo="siteInfo" :badges="badges" :newBlogList="newBlogList" :hitokoto="hitokoto"/>
@@ -58,6 +56,7 @@
 	import Tags from "@/components/sidebar/Tags";
 	import RandomBlog from "@/components/sidebar/RandomBlog";
 	import Tocbot from "@/components/sidebar/Tocbot";
+	import SiteAbout from "@/components/sidebar/SiteAbout";
 	import BlogPasswordDialog from "@/components/index/BlogPasswordDialog";
 	import {mapState} from 'vuex'
 	import {SAVE_CLIENT_SIZE, SAVE_INTRODUCTION, SAVE_SITE_INFO, RESTORE_COMMENT_FORM} from "@/store/mutations-types";
@@ -65,25 +64,32 @@
 
 	export default {
 		name: "Index",
-		components: {Header, BlogPasswordDialog, Tocbot, RandomBlog, Tags, Nav, Footer, Introduction},
+		components: {Header, BlogPasswordDialog, Tocbot, SiteAbout, RandomBlog, Tags, Nav, Footer, Introduction},
 		data() {
 			return {
 				siteInfo: {
 					blogName: '',
-					webTitleSuffix: '',
-					playlistServer: '',
-					playlistId: ''
+					webTitleSuffix: ''
 				},
 				categoryList: [],
 				tagList: [],
 				randomBlogList: [],
 				badges: [],
 				newBlogList: [],
+				siteStats: {
+					articleCount: 0,
+					categoryCount: 0,
+					tagCount: 0
+				},
 				hitokoto: {},
+				handleResize: null,
 			}
 		},
 		computed: {
-			...mapState(['focusMode'])
+			...mapState(['focusMode']),
+			isDocsPage() {
+				return this.$route.name === 'docs'
+			}
 		},
 		watch: {
 			//路由改变时，页面滚动至顶部
@@ -100,8 +106,14 @@
 		mounted() {
 			//保存可视窗口大小
 			this.$store.commit(SAVE_CLIENT_SIZE, {clientHeight: document.body.clientHeight, clientWidth: document.body.clientWidth})
-			window.onresize = () => {
+			this.handleResize = () => {
 				this.$store.commit(SAVE_CLIENT_SIZE, {clientHeight: document.body.clientHeight, clientWidth: document.body.clientWidth})
+			}
+			window.addEventListener('resize', this.handleResize)
+		},
+		beforeDestroy() {
+			if (this.handleResize) {
+				window.removeEventListener('resize', this.handleResize)
 			}
 		},
 		methods: {
@@ -115,6 +127,7 @@
 						this.categoryList = site.categoryList
 						this.tagList = site.tagList
 						this.randomBlogList = site.randomBlogList
+						this.siteStats = site.siteStats
 						this.$store.commit(SAVE_SITE_INFO, this.siteInfo)
 						this.$store.commit(SAVE_INTRODUCTION, site.introduction)
 						document.title = this.$route.meta.title + this.siteInfo.webTitleSuffix
@@ -159,5 +172,11 @@
 
 	.m-display-none {
 		display: none !important;
+	}
+
+	.blog-left-sticky {
+		position: sticky;
+		top: 60px;
+		z-index: 10;
 	}
 </style>

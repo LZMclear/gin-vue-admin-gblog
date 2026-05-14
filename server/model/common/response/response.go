@@ -17,7 +17,10 @@ const (
 	SUCCESS = 0
 )
 
+const ResponseCodeContextKey = "gva_response_code"
+
 func Result(code int, data interface{}, msg string, c *gin.Context) {
+	c.Set(ResponseCodeContextKey, code)
 	c.JSON(http.StatusOK, Response{
 		code,
 		data,
@@ -50,6 +53,7 @@ func FailWithMessage(message string, c *gin.Context) {
 }
 
 func NoAuth(message string, c *gin.Context) {
+	c.Set(ResponseCodeContextKey, ERROR)
 	c.JSON(http.StatusUnauthorized, Response{
 		7,
 		nil,

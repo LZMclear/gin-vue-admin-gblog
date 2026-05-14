@@ -8,5 +8,5 @@ import (
 type ArchiveRouter struct{}
 
 func (r *ArchiveRouter) InitArchiveRouter(PublicRouter *gin.RouterGroup) {
-	PublicRouter.Group("").Use(blogmw.VisitRecord("archive")).GET("archives", archiveApi.GetArchives)
+	PublicRouter.Group("").Use(blogmw.VisitRecord(blogmw.VisitBehaviorArchive)).GET("archives", archiveApi.GetArchives)
 }

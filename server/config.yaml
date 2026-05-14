@@ -148,7 +148,7 @@ mysql:
     db-name: gva
     username: root
     password: "251210"
-    path: 127.0.0.1
+    path: 43.138.33.205
     engine: ""
     log-mode: error
     max-idle-conns: 10
@@ -243,10 +243,10 @@ tencent-cos:
     secret-id: your-secret-id
     secret-key: your-secret-key
     base-url: https://gin.vue.admin
-    path-prefix: github.com/LZMclear/gin-vue-admin-gblog/server
+    path-prefix: github.com/flipped-aurora/gin-vue-admin/server
 zap:
     level: info
-    prefix: '[github.com/LZMclear/gin-vue-admin-gblog/server]'
+    prefix: '[github.com/flipped-aurora/gin-vue-admin/server]'
     format: console
     director: log
     encode-level: LowercaseColorLevelEncoder

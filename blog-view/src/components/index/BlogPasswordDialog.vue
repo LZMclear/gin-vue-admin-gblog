@@ -1,11 +1,16 @@
 <template>
 	<!--私密文章密码对话框-->
 	<el-dialog title="请输入受保护文章密码" width="30%" :visible.sync="blogPasswordDialogVisible"
-	           :lock-scroll="false" :before-close="blogPasswordDialogClosed">
+	           :lock-scroll="false" :before-close="blogPasswordDialogClosed" @opened="focusPasswordInput">
 		<!--内容主体-->
 		<el-form :model="blogPasswordForm" :rules="formRules" ref="formRef" label-width="80px">
 			<el-form-item label="密码" prop="password">
-				<el-input v-model="blogPasswordForm.password"></el-input>
+				<el-input
+					ref="passwordInput"
+					v-model="blogPasswordForm.password"
+					show-password
+					@keyup.native.enter="submitBlogPassword"
+				></el-input>
 			</el-form-item>
 		</el-form>
 		<!--底部-->
@@ -35,6 +40,13 @@
 			}
 		},
 		methods: {
+			focusPasswordInput() {
+				this.$nextTick(() => {
+					if (this.$refs.passwordInput) {
+						this.$refs.passwordInput.focus()
+					}
+				})
+			},
 			blogPasswordDialogClosed() {
 				this.$refs.formRef.resetFields()
 				this.$store.commit(SET_BLOG_PASSWORD_DIALOG_VISIBLE, false)

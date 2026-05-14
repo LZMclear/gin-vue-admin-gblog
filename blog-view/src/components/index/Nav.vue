@@ -27,6 +27,9 @@
 			<router-link to="/about" class="item" :class="{'m-mobile-hide': mobileHide,'active':$route.name==='about'}">
 				<i class="info icon"></i>关于我
 			</router-link>
+			<router-link to="/docs" class="item" :class="{'m-mobile-hide': mobileHide,'active':$route.name==='docs'}">
+				<i class="book icon"></i>文档站
+			</router-link>
 			<el-autocomplete v-model="queryString" :fetch-suggestions="debounceQuery" placeholder="Search..."
 			                 class="right item m-search" :class="{'m-mobile-hide': mobileHide}"
 			                 popper-class="m-search-item" @select="handleSelect">
@@ -65,7 +68,9 @@
 				mobileHide: true,
 				queryString: '',
 				queryResult: [],
-				timer: null
+				timer: null,
+				handleScroll: null,
+				handleDocumentClick: null
 			}
 		},
 		computed: {
@@ -79,7 +84,7 @@
 		},
 		mounted() {
 			//监听页面滚动位置，改变导航栏的显示
-			window.addEventListener('scroll', () => {
+			this.handleScroll = () => {
 				//首页且不是移动端
 				if (this.$route.name === 'home' && this.clientSize.clientWidth > 768) {
 					if (window.scrollY > this.clientSize.clientHeight / 2) {
@@ -88,16 +93,29 @@
 						this.$refs.nav.classList.add('transparent')
 					}
 				}
-			})
+			}
+			window.addEventListener('scroll', this.handleScroll, {passive: true})
 			//监听点击事件，收起导航菜单
-			document.addEventListener('click', (e) => {
+			this.handleDocumentClick = (e) => {
 				//遍历冒泡
 				let flag = this.$refs.nav.contains(e.target)
 				//如果导航栏是打开状态，且点击的元素不是Nav的子元素，则收起菜单
 				if (!this.mobileHide && !flag) {
 					this.mobileHide = true
 				}
-			})
+			}
+			document.addEventListener('click', this.handleDocumentClick)
+		},
+		beforeDestroy() {
+			if (this.handleScroll) {
+				window.removeEventListener('scroll', this.handleScroll)
+			}
+			if (this.handleDocumentClick) {
+				document.removeEventListener('click', this.handleDocumentClick)
+			}
+			if (this.timer) {
+				clearTimeout(this.timer)
+			}
 		},
 		methods: {
 			toggle() {

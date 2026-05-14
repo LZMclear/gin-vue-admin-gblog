@@ -1,0 +1,46 @@
+services:
+  gva-gbserver:
+    image: gvto/gva-server:v3.0.4
+    container_name: gva-gbserver
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - gva-server-log:/go/src/github.com/LZMclear/gin-vue-admin-gblog/server/log
+      - gva-server-uploads:/go/src/github.com/LZMclear/gin-vue-admin-gblog/server/uploads
+      - gva-server-runtime:/go/src/github.com/LZMclear/gin-vue-admin-gblog/server/runtime
+    networks:
+      - gva-network
+
+  web:
+    image: gvto/gva-web:v3.0.4
+    container_name: gva-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - gva-gbserver
+    networks:
+      - gva-network
+
+  blog-view:
+    image: gvto/blog-view:v3.0.4
+    container_name: gva-blog-view
+    restart: unless-stopped
+    environment:
+      API_PROXY_PASS: http://gva-gbserver:8888
+    ports:
+      - "8081:80"
+    depends_on:
+      - gva-gbserver
+    networks:
+      - gva-network
+
+networks:
+  gva-network:
+    driver: bridge
+
+volumes:
+  gva-server-log:
+  gva-server-uploads:
+  gva-server-runtime:
