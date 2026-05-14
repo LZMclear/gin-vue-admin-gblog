@@ -40,11 +40,11 @@
 
 		<!--APlayer-->
 		<div class="m-mobile-hide">
-			<meting-js :server="siteInfo.playlistServer" :id="siteInfo.playlistId" type="playlist" fixed="true" theme="#25CCF7" v-if="siteInfo.playlistServer && siteInfo.playlistId"></meting-js>
+			<meting-js :key="`${siteInfo.playlistServer}-${siteInfo.playlistId}`" :server="siteInfo.playlistServer" :id="siteInfo.playlistId" type="playlist" fixed="true" theme="#25CCF7" v-if="siteInfo.playlistServer && siteInfo.playlistId"></meting-js>
 		</div>
 		<!--回到顶部-->
 		<el-backtop style="box-shadow: none;background: none;z-index: 9999;">
-			<img src="/img/paper-plane.png" style="width: 40px;height: 40px;">
+			<img src="/img/paper-plane.png" loading="lazy" decoding="async" style="width: 40px;height: 40px;">
 		</el-backtop>
 		<!--底部footer-->
 		<Footer :siteInfo="siteInfo" :badges="badges" :newBlogList="newBlogList" :hitokoto="hitokoto"/>
@@ -88,6 +88,7 @@
 					tagCount: 0
 				},
 				hitokoto: {},
+				handleResize: null,
 			}
 		},
 		computed: {
@@ -111,8 +112,14 @@
 		mounted() {
 			//保存可视窗口大小
 			this.$store.commit(SAVE_CLIENT_SIZE, {clientHeight: document.body.clientHeight, clientWidth: document.body.clientWidth})
-			window.onresize = () => {
+			this.handleResize = () => {
 				this.$store.commit(SAVE_CLIENT_SIZE, {clientHeight: document.body.clientHeight, clientWidth: document.body.clientWidth})
+			}
+			window.addEventListener('resize', this.handleResize)
+		},
+		beforeDestroy() {
+			if (this.handleResize) {
+				window.removeEventListener('resize', this.handleResize)
 			}
 		},
 		methods: {

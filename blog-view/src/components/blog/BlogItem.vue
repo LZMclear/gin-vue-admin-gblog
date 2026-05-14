@@ -3,7 +3,7 @@
 		<article class="article-item" v-for="item in blogList" :key="item.id">
 			<div class="top-badge" v-if="item.top"><i class="arrow alternate circle up icon"></i></div>
 			<div class="article-cover">
-				<img v-if="getCoverUrl(item)" :src="getCoverUrl(item)" alt="">
+				<img v-if="getCoverUrl(item)" :src="getCoverUrl(item)" alt="" loading="lazy" decoding="async">
 				<div v-else class="article-cover-placeholder">{{ getTitleInitial(item.title) }}</div>
 			</div>
 

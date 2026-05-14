@@ -70,7 +70,7 @@ export function normalizeSite(data = {}) {
 	})
 
 	return {
-		siteInfo: data.siteInfo || siteInfo,
+		siteInfo: {...siteInfo, ...(data.siteInfo || {})},
 		introduction: data.introduction || introduction,
 		badges: data.badges || badges,
 		categoryList: (data.categoryList || []).map(normalizeCategory),

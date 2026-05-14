@@ -3,10 +3,10 @@
 		<div class="ui segments m-box">
 			<div class="ui card">
 				<div class="image">
-					<img :src="introduction.avatar">
+					<img :src="introduction.avatar" loading="lazy" decoding="async">
 				</div>
 				<div class="qq-avatar-wrap">
-					<img class="qq-avatar" :src="qqAvatar" alt="QQ avatar">
+					<img class="qq-avatar" :src="qqAvatar" alt="QQ avatar" loading="lazy" decoding="async">
 				</div>
 				<div class="content intro-content" align="center">
 					<div class="header">{{ introduction.name }}</div>

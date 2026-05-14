@@ -52,7 +52,7 @@
 							<div class="ui orange basic label" style="width: 100%">
 								<div class="image">
 									<div style="font-size: 12px;text-align: center;margin-bottom: 5px;">一毛是鼓励</div>
-									<img :src="$store.state.siteInfo.reward" alt="" class="ui rounded bordered image" style="width: 100%">
+									<img :src="$store.state.siteInfo.reward" alt="" class="ui rounded bordered image" loading="lazy" decoding="async" style="width: 100%">
 									<div style="font-size: 12px;text-align: center;margin-top: 5px;">一块是真爱</div>
 								</div>
 							</div>

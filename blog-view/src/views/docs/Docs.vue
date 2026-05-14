@@ -93,7 +93,8 @@
 				loadingTree: false,
 				loadingContent: false,
 				error: '',
-				bigFontSize: false
+				bigFontSize: false,
+				contentRequestSeq: 0
 			}
 		},
 		computed: {
@@ -174,9 +175,13 @@
 				})
 			},
 			loadContent(path) {
+				const requestSeq = ++this.contentRequestSeq
 				this.loadingContent = true
 				this.error = ''
 				getDocContent(path).then(res => {
+					if (requestSeq !== this.contentRequestSeq) {
+						return
+					}
 					if (!isSuccess(res)) {
 						this.error = res.msg || '获取文档内容失败'
 						this.loadingContent = false
@@ -191,6 +196,9 @@
 						}
 					})
 				}).catch(() => {
+					if (requestSeq !== this.contentRequestSeq) {
+						return
+					}
 					this.error = '获取文档内容失败'
 					this.loadingContent = false
 				})

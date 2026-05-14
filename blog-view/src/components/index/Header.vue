@@ -25,7 +25,11 @@
 		name: "Header",
 		data() {
 			return {
-				loaded: false
+				loaded: false,
+				startingPoint: 0,
+				handleMouseEnter: null,
+				handleMouseOut: null,
+				handleMouseMove: null
 			}
 		},
 		computed: {
@@ -46,20 +50,31 @@
 				this.loaded = true
 			}
 			this.setHeaderHeight()
-			let startingPoint
 			const header = this.$refs.header
-			header.addEventListener('mouseenter', (e) => {
-				startingPoint = e.clientX
-			})
-			header.addEventListener('mouseout', (e) => {
+			this.handleMouseEnter = (e) => {
+				this.startingPoint = e.clientX
+			}
+			this.handleMouseOut = () => {
 				header.classList.remove('moving')
 				header.style.setProperty('--percentage', 0.5)
-			})
-			header.addEventListener('mousemove', (e) => {
-				let percentage = (e.clientX - startingPoint) / window.outerWidth + 0.5
+			}
+			this.handleMouseMove = (e) => {
+				let percentage = (e.clientX - this.startingPoint) / window.outerWidth + 0.5
 				header.style.setProperty('--percentage', percentage)
 				header.classList.add('moving')
-			})
+			}
+			header.addEventListener('mouseenter', this.handleMouseEnter)
+			header.addEventListener('mouseout', this.handleMouseOut)
+			header.addEventListener('mousemove', this.handleMouseMove)
+		},
+		beforeDestroy() {
+			const header = this.$refs.header
+			if (!header) {
+				return
+			}
+			header.removeEventListener('mouseenter', this.handleMouseEnter)
+			header.removeEventListener('mouseout', this.handleMouseOut)
+			header.removeEventListener('mousemove', this.handleMouseMove)
 		},
 		methods: {
 			//根据可视窗口高度，动态改变首图大小

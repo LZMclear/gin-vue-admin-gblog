@@ -7,7 +7,7 @@
 					<div class="ui link list">
 						<h4 class="ui inverted header m-text-thin m-text-spaced">{{ siteInfo.footerImgTitle }}</h4>
 						<div class="item">
-							<img :src="siteInfo.footerImgUrl" class="ui rounded image" alt="" style="width: 100px">
+							<img :src="siteInfo.footerImgUrl" class="ui rounded image" alt="" loading="lazy" decoding="async" style="width: 100px">
 						</div>
 					</div>
 				</div>
