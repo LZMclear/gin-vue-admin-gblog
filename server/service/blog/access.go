@@ -17,6 +17,8 @@ type blogAccessContext struct {
 	BlogID   *uint
 }
 
+var ErrPasswordProtected = errors.New("password protected")
+
 func parseBlogAccessToken(rawToken string) (blogAccessContext, error) {
 	claims, err := utils.ParseBlogToken(rawToken)
 	if err != nil {
@@ -50,7 +52,7 @@ func ensureBlogReadable(entity blogModel.Blog, rawToken string) (blogAccessConte
 
 	access, err := parseBlogAccessToken(rawToken)
 	if err != nil {
-		return blogAccessContext{}, errors.New("password protected")
+		return blogAccessContext{}, ErrPasswordProtected
 	}
 	if access.IsAdmin {
 		return access, nil
@@ -58,7 +60,7 @@ func ensureBlogReadable(entity blogModel.Blog, rawToken string) (blogAccessConte
 	if access.BlogID != nil && *access.BlogID == entity.ID {
 		return access, nil
 	}
-	return blogAccessContext{}, errors.New("password protected")
+	return blogAccessContext{}, ErrPasswordProtected
 }
 
 func loadBlogAdminUser(username string) (*systemModel.SysUser, error) {

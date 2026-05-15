@@ -68,6 +68,12 @@ const routes = [
 				name: 'about',
 				component: () => import('@/views/about/About'),
 				meta: {title: '关于我'}
+			},
+			{
+				path: '/site-about',
+				name: 'siteAbout',
+				component: () => import('@/views/siteAbout/SiteAbout'),
+				meta: {title: '关于本站'}
 			}
 		]
 	}
