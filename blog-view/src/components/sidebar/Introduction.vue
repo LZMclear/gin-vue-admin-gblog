@@ -157,6 +157,10 @@
 </script>
 
 <style scoped>
+	.ui.card {
+		width: 100% !important;
+	}
+
 	.qq-avatar-wrap {
 		position: relative;
 		z-index: 2;

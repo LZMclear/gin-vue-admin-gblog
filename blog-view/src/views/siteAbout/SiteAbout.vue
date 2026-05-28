@@ -104,7 +104,7 @@
 							sha: item.sha,
 							shortSha: item.sha ? item.sha.slice(0, 7) : '',
 							htmlUrl: item.html_url,
-							author: 'Gvto',
+							author: author.name === 'key' ? 'Gvto' : (author.name || 'Gvto'),
 							date: author.date || '',
 							message: message || 'No commit message'
 						}
