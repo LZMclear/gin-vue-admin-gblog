@@ -7,7 +7,7 @@
 		<div class="ui yellow segment site-about-body">
 
 			<div class="site-about-slogan">
-				<p>记录生活，思考人生</p>
+				<p>记录生活，记录人生</p>
 				<p>热爱技术、写作与思考</p>
 				<p>用文字和照片记录平凡点滴美好</p>
 			</div>

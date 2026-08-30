@@ -157,7 +157,7 @@
 	}
 
 	.main .ui.container {
-		width: 1400px !important;
+		width: clamp(960px, 75vw, 1800px) !important;
 		margin-left: auto !important;
 		margin-right: auto !important;
 	}

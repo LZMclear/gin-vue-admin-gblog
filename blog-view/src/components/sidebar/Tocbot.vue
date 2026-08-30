@@ -37,7 +37,7 @@
 							</button>
 							<span v-else class="toc-toggle-placeholder"></span>
 							<a class="toc-link" :href="`#${item.id}`" @click.prevent="scrollToHeading(item.id)">
-								<span class="toc-number">{{ item.number }}</span>
+								<span v-if="item.level <= 2" class="toc-number">{{ item.number }}</span>
 								{{ item.text }}
 							</a>
 						</div>
@@ -190,7 +190,9 @@
 					const number = counters.slice(0, counterIndex + 1).filter(Boolean).join('.')
 					this.removeHeadingNumber(heading)
 					const text = heading.textContent.trim()
-					this.applyHeadingNumber(heading, number)
+					if (level <= 2) {
+						this.applyHeadingNumber(heading, number)
+					}
 					return {
 						id: heading.id,
 						text,
@@ -432,8 +434,11 @@
 		align-items: flex-start;
 		gap: 6px;
 		padding: 4px 0;
-		font-weight: 300;
-		line-height: 1.45;
+		color: #4b5563;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		font-size: 14px;
+		font-weight: 400;
+		line-height: 1.5;
 	}
 
 	.m-toc .toc-list li a:hover {
@@ -461,9 +466,8 @@
 		flex: 0 0 auto;
 		min-width: 22px;
 		color: #9ca3af;
-		font-size: 12px;
-		font-weight: 600;
-		line-height: 1.7;
+		font-size: 13px;
+		font-weight: 400;
 		text-align: right;
 	}
 

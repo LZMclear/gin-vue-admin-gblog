@@ -74,7 +74,12 @@
 	import {getBlogById} from "@/api/blog";
 	import CommentList from "@/components/comment/CommentList";
 	import {mapState} from "vuex";
-	import {SET_FOCUS_MODE, SET_IS_BLOG_RENDER_COMPLETE} from '@/store/mutations-types';
+	import {
+		SET_BLOG_PASSWORD_DIALOG_VISIBLE,
+		SET_BLOG_PASSWORD_FORM,
+		SET_FOCUS_MODE,
+		SET_IS_BLOG_RENDER_COMPLETE
+	} from '@/store/mutations-types';
 	import {isSuccess, normalizeBlog} from "@/util/gvaResponse";
 
 	export default {
@@ -135,6 +140,12 @@
 		created() {
 			this.getBlog()
 		},
+		mounted() {
+			window.addEventListener('blog-password-verified', this.handleBlogPasswordVerified)
+		},
+		beforeDestroy() {
+			window.removeEventListener('blog-password-verified', this.handleBlogPasswordVerified)
+		},
 		methods: {
 			emptyBlog() {
 				return {
@@ -182,6 +193,10 @@
 							this.$store.commit(SET_IS_BLOG_RENDER_COMPLETE, true)
 						})
 					} else {
+						if (this.shouldRequestBlogPassword(res)) {
+							this.openBlogPasswordDialog(id)
+							return
+						}
 						this.msgError(res.msg)
 					}
 				}).catch(() => {
@@ -197,6 +212,21 @@
 			},
 			changeFocusMode() {
 				this.$store.commit(SET_FOCUS_MODE, !this.focusMode)
+			},
+			shouldRequestBlogPassword(res) {
+				return res && res.code !== 0 && res.msg === '文章受密码保护'
+			},
+			openBlogPasswordDialog(id) {
+				window.localStorage.removeItem(`blog${id}`)
+				this.blog = this.emptyBlog()
+				this.$store.commit(SET_BLOG_PASSWORD_FORM, {blogId: id, password: ''})
+				this.$store.commit(SET_BLOG_PASSWORD_DIALOG_VISIBLE, true)
+			},
+			handleBlogPasswordVerified(event) {
+				const blogId = event && event.detail ? event.detail.blogId : null
+				if (String(blogId) === String(this.blogId)) {
+					this.getBlog(blogId)
+				}
 			}
 		}
 	}
