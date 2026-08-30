@@ -56,13 +56,18 @@
 					if (valid) {
 						checkBlogPassword(this.blogPasswordForm).then(res => {
 							if (isSuccess(res)) {
+								const blogId = this.blogPasswordForm.blogId
 								this.msgSuccess(res.msg)
-								window.localStorage.setItem(`blog${this.blogPasswordForm.blogId}`, res.data)
-								this.$router.push({name: 'blog', params: {id: this.blogPasswordForm.blogId}}).catch(err => {
-									if (err.name !== 'NavigationDuplicated') {
-										throw err
-									}
-								})
+								window.localStorage.setItem(`blog${blogId}`, res.data)
+								if (this.isCurrentBlogRoute(blogId)) {
+									window.dispatchEvent(new CustomEvent('blog-password-verified', {detail: {blogId}}))
+								} else {
+									this.$router.push({name: 'blog', params: {id: blogId}}).catch(err => {
+										if (err.name !== 'NavigationDuplicated') {
+											this.msgError(err.message || '璺宠浆澶辫触')
+										}
+									})
+								}
 								this.blogPasswordDialogClosed()
 							} else {
 								this.msgError(res.msg)
@@ -72,6 +77,9 @@
 						})
 					}
 				})
+			},
+			isCurrentBlogRoute(blogId) {
+				return this.$route.name === 'blog' && String(this.$route.params.id) === String(blogId)
 			}
 		}
 	}

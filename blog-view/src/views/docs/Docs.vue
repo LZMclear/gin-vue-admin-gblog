@@ -489,18 +489,21 @@
 
 <style>
 	.docs-page .js-toc-content h1,
-	.docs-page .js-toc-content h2 {
-		display: flex;
-		align-items: baseline;
-		gap: 10px;
-	}
-
+	.docs-page .js-toc-content h2,
 	.docs-page .js-toc-content h3,
 	.docs-page .js-toc-content h4,
 	.docs-page .js-toc-content h5,
 	.docs-page .js-toc-content h6 {
 		padding-bottom: 0;
 		border-bottom: 0;
+		color: #4b5563;
+	}
+
+	.docs-page .js-toc-content h1,
+	.docs-page .js-toc-content h2 {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
 	}
 
 	.docs-page .docs-heading-number {
@@ -508,13 +511,13 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 32px;
-		padding: 2px 8px;
-		border-radius: 999px;
-		background: #eff6ff;
-		color: #2563eb;
-		font-size: .72em;
-		font-weight: 800;
+		min-width: auto;
+		padding: 0;
+		border-radius: 0;
+		background: none;
+		color: #4b5563;
+		font-size: .88em;
+		font-weight: 400;
 		font-variant-numeric: tabular-nums;
 	}
 </style>

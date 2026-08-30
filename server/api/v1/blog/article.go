@@ -1,10 +1,13 @@
 package blog
 
 import (
+	"errors"
+
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogmw "github.com/flipped-aurora/gin-vue-admin/server/middleware/blog"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
+	blogService "github.com/flipped-aurora/gin-vue-admin/server/service/blog"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -39,6 +42,10 @@ func (a *ArticleApi) GetArticle(c *gin.Context) {
 	}
 	data, err := articleService.GetPublishedDetailByIDWithToken(req.ID, c.GetHeader("Authorization"))
 	if err != nil {
+		if errors.Is(err, blogService.ErrPasswordProtected) {
+			response.FailWithMessage("文章受密码保护", c)
+			return
+		}
 		global.GVA_LOG.Error("get article failed", zap.Error(err))
 		response.FailWithMessage("获取文章失败", c)
 		return
