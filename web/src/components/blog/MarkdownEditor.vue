@@ -298,11 +298,17 @@
   border: 0;
   outline: none;
   resize: none;
-  color: #303133;
+  color: #24292f;
   background: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
   line-height: 1.75;
+}
+
+/* 光标落点提示当前块，提升“正在编辑哪一段”的反馈 */
+.markdown-textarea:focus {
+  border: 0;
+  box-shadow: none;
 }
 
 .preview-pane {
@@ -320,43 +326,60 @@
 
 .markdown-preview {
   padding: 18px 22px;
-  color: #303133;
-  line-height: 1.8;
+  color: #24292f;
+  font-size: 16px;
+  line-height: 1.7;
+  text-align: justify;
+  word-wrap: break-word;
 
   :deep(h1),
   :deep(h2),
-  :deep(h3) {
-    margin: 20px 0 12px;
-    color: #1f2d3d;
-    line-height: 1.35;
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    margin: 1.4em 0 0.8em;
+    color: #1f2328;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
   }
 
   :deep(h1) {
-    font-size: 26px;
+    margin-top: 0.6em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 1.9em;
   }
 
   :deep(h2) {
-    padding-bottom: 6px;
+    padding-bottom: 0.3em;
     border-bottom: 1px solid #ebeef5;
-    font-size: 22px;
+    font-size: 1.5em;
   }
 
   :deep(h3) {
-    font-size: 18px;
+    font-size: 1.25em;
   }
 
-  :deep(p),
-  :deep(ul),
-  :deep(ol),
-  :deep(blockquote),
-  :deep(pre),
-  :deep(table) {
-    margin: 0 0 14px;
+  :deep(h4) {
+    font-size: 1.1em;
+  }
+
+  :deep(h5),
+  :deep(h6) {
+    font-size: 1em;
+  }
+
+  :deep(p) {
+    margin: 0 0 1em;
   }
 
   :deep(ul),
   :deep(ol) {
-    padding-left: 1.6em;
+    margin: 0 0 1em;
+    padding-left: 1.8em;
+    text-align: left;
   }
 
   :deep(ul) {
@@ -368,16 +391,17 @@
   }
 
   :deep(li) {
-    margin: 4px 0;
+    margin: 0.3em 0;
   }
 
   :deep(li > ul) {
-    margin: 4px 0 0;
+    margin: 0.2em 0 0;
     list-style: circle;
   }
 
   :deep(li > ol) {
-    margin: 4px 0 0;
+    margin: 0.2em 0 0;
+    list-style: lower-alpha;
   }
 
   :deep(.contains-task-list) {
@@ -389,31 +413,63 @@
     margin-right: 6px;
   }
 
+  :deep(hr) {
+    height: 1px;
+    margin: 2em 0;
+    border: 0;
+    background: #e7e9ee;
+  }
+
+  :deep(a) {
+    color: #0969da;
+    text-decoration: none;
+  }
+
+  :deep(a:hover) {
+    color: #0550ae;
+    text-decoration: underline;
+  }
+
   :deep(blockquote) {
-    padding: 8px 14px;
-    border-left: 4px solid #409eff;
-    background: #f5f7fa;
-    color: #606266;
+    margin: 1em 0;
+    padding: 0.8em 1.25em;
+    border-left: 4px solid #0969da;
+    border-radius: 6px;
+    background: #f6f8fa;
+    color: #57606a;
+  }
+
+  :deep(blockquote) :deep(p:last-child),
+  :deep(blockquote) :deep(ul:last-child),
+  :deep(blockquote) :deep(ol:last-child) {
+    margin-bottom: 0;
   }
 
   :deep(pre) {
     overflow: auto;
     padding: 14px;
+    border: 1px solid #eceff2;
     border-radius: 6px;
     background: #f6f8fa;
   }
 
   :deep(code) {
-    padding: 2px 5px;
+    margin: 0 2px;
+    padding: 0.2em 0.4em;
+    border: 1px solid #e3e6ea;
     border-radius: 4px;
     background: #f6f8fa;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 13px;
+    font-size: 0.88em;
+    color: #cf222e;
   }
 
   :deep(pre code) {
+    margin: 0;
     padding: 0;
+    border: 0;
     background: transparent;
+    color: #24292f;
   }
 
   :deep(.hljs) {
@@ -469,19 +525,31 @@
   }
 
   :deep(img) {
+    display: block;
     max-width: 100%;
+    margin: 0 auto;
     border-radius: 6px;
   }
 
   :deep(table) {
     width: 100%;
+    margin: 0 0 1em;
     border-collapse: collapse;
   }
 
   :deep(th),
   :deep(td) {
-    padding: 8px 10px;
+    padding: 8px 12px;
     border: 1px solid #dcdfe6;
+  }
+
+  :deep(th) {
+    background: #f6f8fa;
+    font-weight: 600;
+  }
+
+  :deep(tbody tr:nth-child(even)) {
+    background: #fafbfc;
   }
 }
 
