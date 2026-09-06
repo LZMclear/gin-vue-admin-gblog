@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-  import { computed, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { Marked } from 'marked'
   import { markedHighlight } from 'marked-highlight'
   import hljs from 'highlight.js'
@@ -138,13 +138,20 @@
 
   const editorCtx = computed(() => aiStore.contexts.editor)
   const hasEditor = computed(() => Boolean(editorCtx.value))
-  const hasSelection = computed(() => {
+
+  // textarea 选区不是响应式数据，监听原生事件刷新，保证"润色/改写"按钮状态随选中实时变化
+  const selectionText = ref('')
+  const syncSelection = () => {
     try {
-      return Boolean(editorCtx.value?.getSelection?.()?.text)
+      selectionText.value = editorCtx.value?.getSelection?.()?.text || ''
     } catch (_) {
-      return false
+      selectionText.value = ''
     }
-  })
+  }
+  document.addEventListener('selectionchange', syncSelection)
+  onBeforeUnmount(() => document.removeEventListener('selectionchange', syncSelection))
+
+  const hasSelection = computed(() => Boolean(selectionText.value))
   const hasContent = computed(() => {
     try {
       return Boolean(editorCtx.value?.getFullText?.())
@@ -180,11 +187,13 @@
     }
   }
 
-  // 每次打开 AI 抽屉都重新探测（权限/配置变更后无需刷新页面）
+  // 每次打开 AI 抽屉都重新探测（权限/配置变更后无需刷新页面），并同步当前选区
   watch(
     () => aiStore.dockVisible,
     (visible) => {
-      if (visible && !aiEnabled.value) checkStatus()
+      if (!visible) return
+      syncSelection()
+      if (!aiEnabled.value) checkStatus()
     }
   )
 
