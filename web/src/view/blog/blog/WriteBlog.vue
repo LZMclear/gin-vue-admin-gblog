@@ -168,6 +168,7 @@
     updateBlog
   } from '@/api/blog/article'
   import MarkdownEditor from '@/components/blog/MarkdownEditor.vue'
+  import { useAiStore } from '@/pinia/modules/ai'
 
   const createEmptyForm = () => ({
     title: '',
@@ -274,7 +275,54 @@
         this.restoreDraft()
       }
     },
+    mounted() {
+      // 向 AI 助手注册编辑器上下文，供顶栏 AI Dock 中的写作助手联动
+      this.aiStore = useAiStore()
+      this.aiStore.registerContext('editor', this.buildEditorContext())
+    },
+    beforeUnmount() {
+      this.aiStore?.unregisterContext?.('editor')
+    },
     methods: {
+      buildEditorContext() {
+        return {
+          getSelection: () =>
+            this.$refs.contentEditorRef?.getSelection?.() || { text: '', start: 0, end: 0 },
+          replaceSelection: (text) => this.$refs.contentEditorRef?.replaceSelection?.(text),
+          insertAtCursor: (text) => this.$refs.contentEditorRef?.insertAtCursor?.(text),
+          getFullText: () => this.form.content || '',
+          getCursorContext: () => {
+            const sel = this.$refs.contentEditorRef?.getSelection?.()
+            const content = this.form.content || ''
+            const pos = sel?.start || content.length
+            return content.slice(Math.max(0, pos - 1000), pos)
+          },
+          getTitle: () => this.form.title || '',
+          fillDescription: (text) => {
+            if (!text) return false
+            this.form.description = text
+            return true
+          },
+          applySuggestion: (suggestion) => {
+            let matched = false
+            if (suggestion?.category) {
+              const cate = this.categoryList.find(
+                (item) => item.categoryName === suggestion.category
+              )
+              this.form.cate = cate ? cate.id : suggestion.category
+              matched = true
+            }
+            if (Array.isArray(suggestion?.tags) && suggestion.tags.length) {
+              this.form.tagList = suggestion.tags.map((name) => {
+                const tag = this.tagList.find((item) => item.tagName === name)
+                return tag ? tag.id : name
+              })
+              matched = true
+            }
+            return matched
+          }
+        }
+      },
       getData() {
         getCategoryAndTag().then(res => {
           this.categoryList = res.data.categories
@@ -466,9 +514,6 @@
 }
 
 .writer-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -590,7 +635,6 @@
   }
 
   .writer-header {
-    position: static;
     align-items: flex-start;
     flex-direction: column;
   }

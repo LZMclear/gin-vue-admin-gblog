@@ -28,6 +28,7 @@
     "axios": "1.8.2",
     "chokidar": "^4.0.0",
     "core-js": "^3.38.1",
+    "diff": "^9.0.0",
     "echarts": "5.5.1",
     "element-plus": "^2.13.6",
     "highlight.js": "^11.10.0",

@@ -37,4 +37,7 @@ type Server struct {
 
 	// MCP配置
 	MCP MCP `mapstructure:"mcp" json:"mcp" yaml:"mcp"`
+
+	// AI配置（模型配置页未配置时的兜底）
+	AI AI `mapstructure:"ai" json:"ai" yaml:"ai"`
 }

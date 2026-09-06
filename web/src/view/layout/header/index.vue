@@ -46,6 +46,7 @@
     </div>
 
     <div class="ml-2 flex items-center">
+      <ai-dock />
       <tools />
       <el-dropdown>
         <div class="flex justify-center items-center h-full w-full">
@@ -104,6 +105,7 @@
   import { fmtTitle } from '@/utils/fmtRouterTitle'
   import gvaAside from '@/view/layout/aside/index.vue'
   import Logo from '@/components/logo/index.vue'
+  import AiDock from '@/components/ai/AiDock.vue'
 
   const userStore = useUserStore()
   const router = useRouter()

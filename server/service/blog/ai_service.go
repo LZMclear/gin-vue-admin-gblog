@@ -1,0 +1,309 @@
+package blog
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/components/tool"
+	react "github.com/cloudwego/eino/flow/agent/react"
+	"github.com/cloudwego/eino/schema"
+	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
+	aiService "github.com/flipped-aurora/gin-vue-admin/server/service/ai"
+	"go.uber.org/zap"
+)
+
+const (
+	aiActionPolish   = "polish"
+	aiActionRewrite  = "rewrite"
+	aiActionContinue = "continue"
+	aiActionOutline  = "outline"
+	aiActionTitle    = "title"
+	aiActionCustom   = "custom"
+
+	aiMaxHistoryTurns = 6
+	aiToolBlogLimit   = 5
+	aiToolBodyLimit   = 2000
+)
+
+type AiService struct{}
+
+// 请求/消息结构定义在 model/blog/request，此处做类型别名供 service 内部使用。
+type AiChatRequest = blogReq.AiChatRequest
+type AiChatMessage = blogReq.AiChatMessage
+
+// Available 透出模型工厂探活结果：默认模型是否存在。
+func (s *AiService) Available() (bool, string) {
+	return aiService.Factory().Available()
+}
+
+func validateAiChatRequest(r *AiChatRequest) error {
+	switch r.Action {
+	case aiActionPolish, aiActionRewrite:
+		if strings.TrimSpace(r.Selection) == "" {
+			return fmt.Errorf("action=%s 时 selection 不能为空", r.Action)
+		}
+	case aiActionContinue:
+		if strings.TrimSpace(r.CursorContext) == "" && strings.TrimSpace(r.Content) == "" {
+			return fmt.Errorf("action=continue 时需要提供正文或光标上下文")
+		}
+	case aiActionOutline, aiActionTitle:
+		if strings.TrimSpace(r.Title) == "" && strings.TrimSpace(r.Instruction) == "" && strings.TrimSpace(r.Content) == "" {
+			return fmt.Errorf("action=%s 时至少提供标题、想法或正文", r.Action)
+		}
+	case aiActionCustom:
+		if strings.TrimSpace(r.Instruction) == "" {
+			return fmt.Errorf("action=custom 时 instruction 不能为空")
+		}
+	default:
+		return fmt.Errorf("不支持的 action: %s", r.Action)
+	}
+	return nil
+}
+
+// CheckQuota 校验并占用当日调用额度，返回剩余次数（-1 表示未启用限制）。
+func (s *AiService) CheckQuota(userID uint) (int64, error) {
+	limit := global.GVA_CONFIG.AI.DailyLimit
+	if limit <= 0 || global.GVA_REDIS == nil {
+		return -1, nil
+	}
+	key := fmt.Sprintf("ai:quota:%d:%s", userID, time.Now().Format("20060102"))
+	count, err := global.GVA_REDIS.Incr(context.Background(), key).Result()
+	if err != nil {
+		// Redis 故障不阻断业务
+		global.GVA_LOG.Warn("AI 配额统计失败，跳过限制", zap.Error(err))
+		return -1, nil
+	}
+	if count == 1 {
+		global.GVA_REDIS.Expire(context.Background(), key, 24*time.Hour)
+	}
+	if count > int64(limit) {
+		return 0, fmt.Errorf("今日 AI 调用次数已达上限（%d 次/日）", limit)
+	}
+	remain := int64(limit) - count
+	return remain, nil
+}
+
+// buildSystemPrompt 生成写作助手的系统提示词。
+func (s *AiService) buildSystemPrompt() string {
+	return `你是本博客的写作助手，服务于博主本人，运行在后台 Markdown 编辑器中。
+规则：
+1. 输出永远是 Markdown 正文片段，不要寒暄、不要解释、不要使用代码围栏包裹整体输出。
+2. 行动语义：polish=保持原意优化表达；rewrite=换一种写法；continue=从上下文自然续写1~2段；outline=输出 Markdown 标题层级大纲；title=给5个候选标题（每行一个）；custom=遵循用户指令。
+3. 可调用工具参考博主历史文章的行文风格：search_my_blogs（按关键词搜索）、get_blog_content（按ID读全文）。工具名必须与上述名称完全一致，禁止拼写变体。
+4. 中文写作，代码块标注语言；不编造事实；不确定时保留原意而非添加虚构内容。
+5. 润色/改写时输出必须与原文保持相同的段落数量与顺序（逐段对应，不合并、不拆分、不增删段落），以便前端做逐段对比。
+6. 润色/改写输出长度与原文相当；续写不超过300字。`
+}
+
+// buildUserMessage 按 action 拼装用户消息。
+func (s *AiService) buildUserMessage(req *AiChatRequest) string {
+	ctxLimit := global.GVA_CONFIG.AI.ContextLimit
+	if ctxLimit <= 0 {
+		ctxLimit = 8000
+	}
+	truncate := func(text string) string {
+		runes := []rune(text)
+		if len(runes) > ctxLimit {
+			return string(runes[len(runes)-ctxLimit:])
+		}
+		return text
+	}
+
+	switch req.Action {
+	case aiActionPolish, aiActionRewrite:
+		actionLabel := "润色"
+		if req.Action == aiActionRewrite {
+			actionLabel = "改写"
+		}
+		return fmt.Sprintf("请%s以下选中的 Markdown 片段%s：\n\n%s", actionLabel, s.titleSuffix(req), truncate(req.Selection))
+	case aiActionContinue:
+		contextText := req.CursorContext
+		if strings.TrimSpace(contextText) == "" {
+			contextText = req.Content
+		}
+		return fmt.Sprintf("请从下文结尾处自然续写%s：\n\n%s", s.titleSuffix(req), truncate(contextText))
+	case aiActionOutline:
+		idea := strings.TrimSpace(req.Instruction)
+		if idea == "" {
+			idea = strings.TrimSpace(req.Content)
+		}
+		return fmt.Sprintf("文章标题：%s\n作者的想法：%s\n\n请生成一份 Markdown 层级大纲。", req.Title, truncate(idea))
+	case aiActionTitle:
+		source := strings.TrimSpace(req.Content)
+		if source == "" {
+			source = strings.TrimSpace(req.Instruction)
+		}
+		return fmt.Sprintf("请为以下内容拟5个候选标题，每行一个：\n\n%s", truncate(source))
+	case aiActionCustom:
+		body := strings.TrimSpace(req.Content)
+		if body != "" {
+			return fmt.Sprintf("%s\n\n相关正文：\n\n%s", req.Instruction, truncate(body))
+		}
+		return req.Instruction
+	}
+	return req.Instruction
+}
+
+func (s *AiService) titleSuffix(req *AiChatRequest) string {
+	if strings.TrimSpace(req.Title) == "" {
+		return ""
+	}
+	return fmt.Sprintf("（文章标题：%s）", req.Title)
+}
+
+func (s *AiService) trimHistory(history []AiChatMessage) []*schema.Message {
+	var msgs []*schema.Message
+	for _, h := range history {
+		if strings.TrimSpace(h.Content) == "" {
+			continue
+		}
+		role := h.Role
+		if role == "assistant" {
+			msgs = append(msgs, &schema.Message{Role: schema.Assistant, Content: h.Content})
+		} else if role == "user" {
+			msgs = append(msgs, &schema.Message{Role: schema.User, Content: h.Content})
+		}
+	}
+	if len(msgs) > aiMaxHistoryTurns {
+		msgs = msgs[len(msgs)-aiMaxHistoryTurns:]
+	}
+	return msgs
+}
+
+// buildTools 构建写作助手的只读工具集。
+func (s *AiService) buildTools() ([]tool.BaseTool, error) {
+	searchTool, err := toolInferSearchBlogs()
+	if err != nil {
+		return nil, err
+	}
+	bodyTool, err := toolInferBlogContent()
+	if err != nil {
+		return nil, err
+	}
+	return []tool.BaseTool{searchTool, bodyTool}, nil
+}
+
+// ChatStream 运行 React Agent 并返回流式输出。
+func (s *AiService) ChatStream(ctx context.Context, req *AiChatRequest) (*schema.StreamReader[*schema.Message], error) {
+	if err := validateAiChatRequest(req); err != nil {
+		return nil, err
+	}
+	cm, err := aiService.Factory().Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tools, err := s.buildTools()
+	if err != nil {
+		return nil, fmt.Errorf("构建工具失败: %w", err)
+	}
+	agent, err := react.NewAgent(ctx, &react.AgentConfig{
+		ToolCallingModel: cm,
+		ToolsConfig: compose.ToolsNodeConfig{
+			Tools: tools,
+			// 模型拼错工具名时不中止运行，返回引导信息让其自我纠正
+			UnknownToolsHandler: func(_ context.Context, name, _ string) (string, error) {
+				return fmt.Sprintf("工具 %s 不存在。可用工具：search_my_blogs（搜索博主历史文章）、get_blog_content（读取指定ID文章）。请使用完全一致的名称重试，或直接基于已有信息作答。", name), nil
+			},
+		},
+		MaxStep: 12,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("创建 Agent 失败: %w", err)
+	}
+
+	msgs := []*schema.Message{schema.SystemMessage(s.buildSystemPrompt())}
+	msgs = append(msgs, s.trimHistory(req.History)...)
+	msgs = append(msgs, schema.UserMessage(s.buildUserMessage(req)))
+	return agent.Stream(ctx, msgs)
+}
+
+// GenerateSummary 生成文章摘要（单次调用，不走 Agent 循环）。
+func (s *AiService) GenerateSummary(ctx context.Context, req *AiChatRequest) (string, error) {
+	return s.singleGenerate(ctx, fmt.Sprintf(
+		"请为以下博客文章生成80~150字的中文摘要，直接输出摘要正文，不要任何前缀解释。文章标题：%s\n\n正文：",
+		req.Title), req.Content, 200)
+}
+
+type TagSuggestion struct {
+	Category string   `json:"category"`
+	Tags     []string `json:"tags"`
+	NewTags  []string `json:"newTags"`
+}
+
+// SuggestTags 从现有分类/标签中推荐，并允许建议新标签。
+func (s *AiService) SuggestTags(ctx context.Context, req *AiChatRequest) (*TagSuggestion, error) {
+	var meta struct {
+		Categories []struct {
+			ID           uint   `json:"id"`
+			CategoryName string `json:"categoryName"`
+		} `json:"categories"`
+		Tags []struct {
+			ID      uint   `json:"id"`
+			TagName string `json:"tagName"`
+		} `json:"tags"`
+	}
+	res, err := aiAdminArticleSvc.GetCategoryAndTag()
+	if err != nil {
+		return nil, err
+	}
+	raw, _ := json.Marshal(res)
+	if err := json.Unmarshal(raw, &meta); err != nil {
+		return nil, err
+	}
+
+	cateNames := make([]string, 0, len(meta.Categories))
+	for _, c := range meta.Categories {
+		cateNames = append(cateNames, c.CategoryName)
+	}
+	tagNames := make([]string, 0, len(meta.Tags))
+	for _, t := range meta.Tags {
+		tagNames = append(tagNames, t.TagName)
+	}
+
+	prompt := fmt.Sprintf(
+		"根据以下博客文章内容推荐分类与标签。\n可选分类（必须从中选一个）：%s\n可选标签（优先从中选择）：%s\n"+
+			"以 JSON 输出：{\"category\":\"分类名\",\"tags\":[\"已有标签\"],\"newTags\":[\"建议新建标签\"]}，"+
+			"tags 最多3个，newTags 最多2个，如无建议给空数组，不要输出其他内容。\n\n文章标题：%s\n正文：",
+		strings.Join(cateNames, "、"), strings.Join(tagNames, "、"), req.Title)
+
+	out, err := s.singleGenerate(ctx, prompt, req.Content, 200)
+	if err != nil {
+		return nil, err
+	}
+	suggestion := &TagSuggestion{Tags: []string{}, NewTags: []string{}}
+	start := strings.Index(out, "{")
+	end := strings.LastIndex(out, "}")
+	if start < 0 || end <= start {
+		return nil, fmt.Errorf("模型未返回有效的推荐结果")
+	}
+	if err := json.Unmarshal([]byte(out[start:end+1]), suggestion); err != nil {
+		return nil, fmt.Errorf("解析推荐结果失败: %w", err)
+	}
+	return suggestion, nil
+}
+
+// singleGenerate 用模型做单次（非流式）调用，body 按 maxBodyChars 截断。
+func (s *AiService) singleGenerate(ctx context.Context, prefix, body string, maxBodyChars int) (string, error) {
+	cm, err := aiService.Factory().Get(ctx)
+	if err != nil {
+		return "", err
+	}
+	runes := []rune(body)
+	if maxBodyChars > 0 && len(runes) > maxBodyChars {
+		body = string(runes[:maxBodyChars]) + "……"
+	}
+	out, err := cm.Generate(ctx, []*schema.Message{
+		schema.SystemMessage(s.buildSystemPrompt()),
+		schema.UserMessage(prefix + "\n\n" + body),
+	})
+	if err != nil {
+		return "", err
+	}
+	return out.Content, nil
+}

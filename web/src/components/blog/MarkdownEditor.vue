@@ -210,7 +210,40 @@
     }
   }
 
-  defineExpose({ focusTextarea })
+  // ---- 供 AI 助手等外部场景调用的编辑器能力 ----
+  const getSelection = () => {
+    const textarea = textareaRef.value
+    if (!textarea) return { text: '', start: 0, end: 0 }
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    return { text: value.value.slice(start, end), start, end }
+  }
+
+  const replaceSelection = (text) => {
+    const { start, end } = getSelection()
+    if (start === end && start === 0) {
+      // 无内容时直接替换全部（AI 改写整篇的场景）
+      value.value = text
+      return
+    }
+    value.value = `${value.value.slice(0, start)}${text}${value.value.slice(end)}`
+  }
+
+  const insertAtCursor = (text) => {
+    const textarea = textareaRef.value
+    const pos = textarea ? textarea.selectionStart : value.value.length
+    value.value = `${value.value.slice(0, pos)}${text}\n${value.value.slice(pos)}`
+  }
+
+  const getFullText = () => value.value
+
+  defineExpose({
+    focusTextarea,
+    getSelection,
+    replaceSelection,
+    insertAtCursor,
+    getFullText
+  })
 </script>
 
 <style scoped lang="scss">
