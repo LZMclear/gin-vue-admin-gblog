@@ -13,7 +13,7 @@
           v-for="action in quickActions"
           :key="action.key"
           size="small"
-          :disabled="action.disabled.value || streaming"
+          :disabled="action.disabled.value || streaming || editorDiffOpen"
           @click="runAction(action)"
         >
           {{ action.label }}
@@ -27,13 +27,13 @@
           type="textarea"
           :rows="2"
           placeholder="输入自定义指令，如：把这段改成问答体"
-          :disabled="streaming"
+          :disabled="streaming || editorDiffOpen"
         />
         <el-button
           type="primary"
           size="small"
           class="send-btn"
-          :disabled="!instruction.trim() || streaming"
+          :disabled="!instruction.trim() || streaming || editorDiffOpen"
           @click="runCustom"
         >
           发送
@@ -96,25 +96,12 @@
 
 <script setup>
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
-  import { Marked } from 'marked'
-  import { markedHighlight } from 'marked-highlight'
-  import hljs from 'highlight.js'
+  import { renderSafeMarkdown } from '@/utils/safeMarkdown'
   import { ElMessage } from 'element-plus'
   import { useAiStore } from '@/pinia/modules/ai'
   import { streamAiChat, getAiStatus, generateSummary, suggestTags } from '@/api/blog/ai'
 
   const aiStore = useAiStore()
-
-  const marked = new Marked(
-    { gfm: true, breaks: true },
-    markedHighlight({
-      langPrefix: 'hljs language-',
-      highlight(code, lang) {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext'
-        return hljs.highlight(code, { language }).value
-      }
-    })
-  )
 
   // ---- 状态 ----
   const aiEnabled = ref(true)
@@ -124,10 +111,9 @@
   const resultText = ref('')
   const resultTitle = ref('')
   const streamingHint = ref('')
-  const editorDiffOpen = ref(false) // 润色/改写完成后 diff 是否已铺在编辑器中
+  const editorDiffOpen = computed(() => aiStore.diff.active)
   const history = ref([])
-  let currentAction = null
-  let currentSource = '' // 润色/改写的原始选区
+  const currentAction = ref(null)
   let streamHandle = null
 
   const editorCtx = computed(() => aiStore.contexts.editor)
@@ -143,7 +129,10 @@
     }
   }
   document.addEventListener('selectionchange', syncSelection)
-  onBeforeUnmount(() => document.removeEventListener('selectionchange', syncSelection))
+  onBeforeUnmount(() => {
+    document.removeEventListener('selectionchange', syncSelection)
+    abortStream()
+  })
 
   const hasSelection = computed(() => Boolean(selectionText.value))
   const hasContent = computed(() => {
@@ -230,17 +219,17 @@
     }
   ]
 
-  const renderedResult = computed(() => marked.parse(resultText.value || ''))
+  const renderedResult = computed(() => renderSafeMarkdown(resultText.value))
 
   const resultActions = computed(() => {
     const actions = []
-    if (currentAction === 'summary') {
+    if (currentAction.value === 'summary') {
       actions.push({ key: 'fill', label: '回填摘要', handler: fillDescription })
     }
-    if (currentAction === 'suggest-tags') {
+    if (currentAction.value === 'suggest-tags') {
       actions.push({ key: 'apply', label: '回填标签', handler: applyTags })
     }
-    if (hasEditor.value && (currentAction === 'continue' || currentAction === 'outline')) {
+    if (hasEditor.value && (currentAction.value === 'continue' || currentAction.value === 'outline')) {
       actions.push({ key: 'insert', label: '插入到光标处', handler: insertResult })
     }
     actions.push({ key: 'copy', label: '复制', handler: copyResult })
@@ -249,6 +238,7 @@
 
   // ---- 执行 ----
   const runAction = (action) => {
+    if (streaming.value || editorDiffOpen.value) return
     if (action.disabled.value) {
       if (action.hint) ElMessage.warning(action.hint)
       return
@@ -277,23 +267,27 @@
   }
 
   const runChatAction = async (action) => {
-    const selection = editorCtx.value?.getSelection?.()
-    currentSource = selection?.text || ''
-    currentAction = action
-    editorDiffOpen.value = false
+    const needsSelection = action === 'polish' || action === 'rewrite'
+    const snapshot = needsSelection ? editorCtx.value?.captureSelection?.() : null
+    if (needsSelection && !snapshot) return ElMessage.warning('请先在当前文章中选择要修改的文本')
+    currentAction.value = action
     resultText.value = ''
     resultTitle.value = {
       polish: '润色结果', rewrite: '改写结果', continue: '续写结果',
       outline: '生成大纲', title: '标题建议', custom: 'AI 结果'
     }[action] || 'AI 结果'
     streamingHint.value = '正在思考'
-    await startStream(buildPayload(action))
+    const payload = buildPayload(action)
+    if (snapshot) {
+      payload.selection = snapshot.text
+      payload.content = snapshot.content
+    }
+    await startStream(payload, snapshot)
   }
 
   const runCustom = async () => {
-    if (!instruction.value.trim()) return
-    currentAction = 'custom'
-    editorDiffOpen.value = false
+    if (!instruction.value.trim() || streaming.value || editorDiffOpen.value) return
+    currentAction.value = 'custom'
     resultText.value = ''
     resultTitle.value = 'AI 结果'
     streamingHint.value = '正在思考'
@@ -301,8 +295,7 @@
   }
 
   const runSummary = async () => {
-    currentAction = 'summary'
-    editorDiffOpen.value = false
+    currentAction.value = 'summary'
     resultText.value = ''
     resultTitle.value = '文章摘要'
     streaming.value = true
@@ -317,8 +310,7 @@
   }
 
   const runSuggestTags = async () => {
-    currentAction = 'suggest-tags'
-    editorDiffOpen.value = false
+    currentAction.value = 'suggest-tags'
     resultText.value = ''
     resultTitle.value = '分类与标签建议'
     streaming.value = true
@@ -340,42 +332,54 @@
 
   let tagSuggestion = ref(null)
 
-  const startStream = (payload) => {
+  const startStream = (payload, snapshot = null) => {
     streaming.value = true
     const userContent = payload.instruction || payload.selection || payload.content || ''
-    streamHandle = streamAiChat(
+    let generatedText = ''
+    let completed = false
+    const handle = streamAiChat(
       { ...payload, history: history.value.slice(-6) },
       {
         onDelta: (delta) => {
-          resultText.value += delta
+          if (streamHandle !== handle) return
+          generatedText += delta
+          resultText.value = generatedText
         },
         onTool: (tool) => {
+          if (streamHandle !== handle) return
           if (tool.name === 'search_my_blogs') streamingHint.value = '正在检索你的历史文章'
           else if (tool.name === 'get_blog_content') streamingHint.value = '正在阅读相关文章'
           else streamingHint.value = '正在调用工具'
         },
         onError: (message) => {
+          if (streamHandle !== handle) return
           ElMessage.error(message)
+        },
+        onDone: () => {
+          completed = true
         }
       }
     )
 
-    return streamHandle.promise.then(({ aborted }) => {
+    streamHandle = handle
+    return handle.promise.then(({ aborted, errorMessage }) => {
+      if (streamHandle !== handle) return
       streaming.value = false
       streamHandle = null
-      if (aborted) return
-      if (!resultText.value) return
+      if (aborted || errorMessage || !generatedText) return
+      // 不完整的输出不能进入正文替换流程。
+      if (!completed) return ElMessage.warning('生成未完整结束，已保留结果供复制，请重新生成后再应用')
 
       history.value.push(
         { role: 'user', content: userContent.slice(0, 2000) },
-        { role: 'assistant', content: resultText.value.slice(0, 2000) }
+        { role: 'assistant', content: generatedText.slice(0, 2000) }
       )
       if (history.value.length > 6) history.value = history.value.slice(-6)
 
       // 润色/改写且原文来自选区 → diff 直接铺在正文编辑器中
-      if ((payload.action === 'polish' || payload.action === 'rewrite') && currentSource) {
-        aiStore.openEditorDiff(currentSource, resultText.value)
-        editorDiffOpen.value = true
+      if (snapshot) {
+        const result = aiStore.openEditorDiff(snapshot, generatedText)
+        if (!result.ok) ElMessage.warning(result.message)
       }
     })
   }
@@ -429,11 +433,9 @@
   const reset = () => {
     if (editorDiffOpen.value) {
       aiStore.closeEditorDiff()
-      editorDiffOpen.value = false
     }
     resultText.value = ''
-    currentAction = null
-    currentSource = ''
+    currentAction.value = null
     tagSuggestion.value = null
   }
 </script>

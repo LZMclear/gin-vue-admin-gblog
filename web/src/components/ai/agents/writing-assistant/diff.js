@@ -1,123 +1,102 @@
 import { diffArrays } from 'diff'
+import { Lexer } from 'marked'
 
-/**
- * 将 Markdown 文本切分为块：代码围栏视为原子块，其余按空行分段。
- */
-export function splitMarkdownBlocks(text) {
+// 列表、表格、引用及完整代码围栏作为原子块，raw 映射回原文以保留 CRLF 和空白。
+function tokenizeMarkdown(text) {
+  const source = String(text || '')
+  if (!source) return []
+  const normalized = source.replace(/\r\n?/g, '\n')
+  const tokens = Lexer.lex(normalized, { gfm: true })
+  // 引用定义等语法可能不出现在顶层 token 中，整段比较以保证无损。
+  if (tokens.map((token) => token.raw).join('') !== normalized) {
+    return [{ kind: 'document', raw: source }]
+  }
   const blocks = []
-  const lines = String(text || '').split(/\r?\n/)
-  let current = []
-  let inFence = false
-
-  const flush = () => {
-    if (current.length) {
-      blocks.push(current.join('\n'))
-      current = []
+  let offset = 0
+  let leading = ''
+  for (const token of tokens) {
+    const start = offset
+    for (let i = 0; i < token.raw.length; i++) {
+      offset += source[offset] === '\r' && source[offset + 1] === '\n' ? 2 : 1
+    }
+    const raw = source.slice(start, offset)
+    if (token.type === 'space') {
+      if (blocks.length) blocks[blocks.length - 1].raw += raw
+      else leading += raw
+    } else {
+      blocks.push({ kind: token.type, raw: leading + raw })
+      leading = ''
     }
   }
-
-  for (const line of lines) {
-    if (/^\s*(```|~~~)/.test(line)) {
-      // 围栏开始/结束行
-      if (inFence) {
-        current.push(line)
-        flush() // 整个围栏作为一块
-        inFence = false
-      } else {
-        flush()
-        current.push(line)
-        inFence = true
-      }
-      continue
-    }
-    if (!inFence && line.trim() === '') {
-      flush()
-      continue
-    }
-    current.push(line)
-  }
-  flush()
+  if (leading) blocks.push({ kind: 'space', raw: leading })
   return blocks
 }
 
-/**
- * 段落级 diff：返回块序列 [{ type: 'equal'|'modified'|'added'|'removed', original, revised, takeRevised }]
- * - equal: 两边一致
- * - modified: 两侧对应但内容不同（可逐块选择采用 AI 版本或保留原文）
- * - added: AI 新增块；removed: 仅原文有块
- */
-export function diffMarkdownBlocks(originalText, revisedText) {
-  const original = splitMarkdownBlocks(originalText)
-  const revised = splitMarkdownBlocks(revisedText)
+export function splitMarkdownBlocks(text) {
+  return tokenizeMarkdown(text).map((block) => block.raw)
+}
 
-  const parts = diffArrays(original, revised, {
-    comparator: (left, right) => left === right
-  })
-
-  const result = []
-  for (const part of parts) {
-    const count = part.count || (part.value || []).length
-    if (part.added) {
-      for (const block of part.value) {
-        result.push({ type: 'added', original: null, revised: block, takeRevised: true })
-      }
-      void count
-    } else if (part.removed) {
-      for (const block of part.value) {
-        result.push({ type: 'removed', original: block, revised: null, takeRevised: false })
-      }
-    } else {
-      // 未变化
-      for (const block of part.value) {
-        result.push({ type: 'equal', original: block, revised: block, takeRevised: true })
-      }
-    }
+function changeBlock(original, revised, fallback = false) {
+  return {
+    type: original === revised ? 'equal' : original === null ? 'added' : revised === null ? 'removed' : 'modified',
+    original,
+    revised,
+    takeRevised: true,
+    fallback
   }
+}
 
-  // 把相邻的 added/removed 对合并为 modified（jsdiff 对修改会输出 -removed +added 相邻对）
-  const merged = []
-  for (let i = 0; i < result.length; i++) {
-    const cur = result[i]
-    const next = result[i + 1]
-    if (cur.type === 'removed' && next && next.type === 'added') {
-      merged.push({
-        type: 'modified',
-        original: cur.original,
-        revised: next.revised,
-        takeRevised: true
-      })
+/** 相同块作锚点；连续修改成组处理，无法逐段对应时作为一组采纳。 */
+export function diffMarkdownBlocks(originalText, revisedText) {
+  const original = tokenizeMarkdown(originalText)
+  const revised = tokenizeMarkdown(revisedText)
+  const parts = diffArrays(original, revised, {
+    comparator: (left, right) => left.kind === right.kind && left.raw === right.raw,
+    timeout: 100
+  })
+  if (!parts) {
+    return [changeBlock(String(originalText || ''), String(revisedText || ''), true)]
+  }
+  const result = []
+  for (let i = 0; i < parts.length;) {
+    const part = parts[i]
+    if (!part.added && !part.removed) {
+      result.push(...part.value.map((block) => changeBlock(block.raw, block.raw)))
       i++
       continue
     }
-    merged.push(cur)
+    const removed = []
+    const added = []
+    while (i < parts.length && (parts[i].added || parts[i].removed)) {
+      const current = parts[i++]
+      const group = current.removed ? removed : added
+      group.push(...current.value)
+    }
+    const canAlign = removed.length === added.length && removed.every(
+      (block, index) => block.kind === added[index].kind && block.kind !== 'document'
+    )
+    if (canAlign) {
+      result.push(...removed.map((block, index) => changeBlock(block.raw, added[index].raw)))
+    } else {
+      // 增删段、结构改变时不猜测对应关系，避免局部采纳破坏 Markdown。
+      result.push(changeBlock(
+        removed.length ? removed.map((block) => block.raw).join('') : null,
+        added.length ? added.map((block) => block.raw).join('') : null,
+        removed.length > 0 && added.length > 0
+      ))
+    }
   }
-  return merged
+  return result
 }
 
-/**
- * 按 diff 块的用户选择拼回最终文本。
- */
+/** 拼接选定的原始片段，不插入、删除或归一化任何空白。 */
 export function applyDiffBlocks(blocks) {
-  return blocks
-    .map((block) => {
-      if (block.type === 'equal') return block.original
-      if (block.type === 'modified' || block.type === 'added') {
-        return block.takeRevised ? block.revised : block.original
-      }
-      // removed：takeRevised=false 表示保留原文
-      return block.takeRevised ? null : block.original
-    })
-    .filter((text) => text !== null && text !== undefined && text !== '')
-    .join('\n\n')
+  return blocks.map((block) => (
+    block.type === 'equal' || !block.takeRevised ? block.original : block.revised
+  ) ?? '').join('')
 }
 
-/**
- * 统计可选择的块数量与已采纳数量。
- */
 export function diffStats(blocks) {
-  const selectable = blocks.filter(
-    (b) => b.type === 'modified' || b.type === 'added' || b.type === 'removed'
-  )
-  const adopted = selectable.filter((b) => b.takeRevised)
-  return { total: selectable.length, adopted: adopted.length }
+  const selectable = blocks.filter((block) => block.type !== 'equal')
+  return { total: selectable.length, adopted: selectable.filter((block) => block.takeRevised).length }
 }

@@ -7,10 +7,11 @@
       </el-radio-group>
       <div class="diff-actions">
         <el-button size="small" @click="setAll(true)">全部采用</el-button>
-        <el-button size="small" @click="setAll(false)">全部撤销</el-button>
+        <el-button size="small" @click="setAll(false)">全部保留原文</el-button>
       </div>
     </div>
     <div class="diff-summary">已采纳 {{ stats.adopted }}/{{ stats.total }} 处修改</div>
+    <div v-if="blocks.some(block => block.fallback)" class="diff-summary">部分内容的段落或结构发生变化，已合并为一组供你选择。</div>
 
     <div class="diff-list">
       <div
@@ -102,19 +103,11 @@
   }
 
   const choose = (index, takeRevised) => {
-    props.blocks[index].takeRevised = takeRevised
-    emit('change')
+    emit('change', { index, takeRevised })
   }
 
   const setAll = (takeRevised) => {
-    for (const block of props.blocks) {
-      if (block.type === 'modified' || block.type === 'added') {
-        block.takeRevised = takeRevised
-      } else if (block.type === 'removed') {
-        block.takeRevised = takeRevised // true=删除该段，false=保留
-      }
-    }
-    emit('change')
+    emit('change', { takeRevised })
   }
 </script>
 

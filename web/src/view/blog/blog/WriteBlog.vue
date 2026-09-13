@@ -50,6 +50,7 @@
             <el-form-item prop="content">
               <MarkdownEditor
                 ref="contentEditorRef"
+                :document-id="draftKey"
                 v-model="form.content"
                 height="680px"
                 enable-ai-diff
@@ -277,18 +278,28 @@
       }
     },
     mounted() {
-      // 向 AI 助手注册编辑器上下文，供顶栏 AI Dock 中的写作助手联动
-      this.aiStore = useAiStore()
-      this.aiStore.registerContext('editor', this.buildEditorContext())
+      this.registerAiEditor()
+    },
+    activated() {
+      this.registerAiEditor()
+    },
+    deactivated() {
+      this.aiStore?.unregisterContext?.('editor', this.aiEditorContext)
     },
     beforeUnmount() {
-      this.aiStore?.unregisterContext?.('editor')
-      // 离开页面时丢弃未应用的编辑器 diff，避免残留状态影响下次进入
-      this.aiStore?.closeEditorDiff?.()
+      this.aiStore?.unregisterContext?.('editor', this.aiEditorContext)
     },
     methods: {
+      registerAiEditor() {
+        this.aiStore = useAiStore()
+        this.aiEditorContext ||= this.buildEditorContext()
+        this.aiStore.registerContext('editor', this.aiEditorContext)
+      },
       buildEditorContext() {
         return {
+          getEditorState: () => this.$refs.contentEditorRef?.getEditorState?.(),
+          captureSelection: () => this.$refs.contentEditorRef?.captureSelection?.(),
+          applySelectionSnapshot: (snapshot, text) => this.$refs.contentEditorRef?.applySelectionSnapshot?.(snapshot, text),
           getSelection: () =>
             this.$refs.contentEditorRef?.getSelection?.() || { text: '', start: 0, end: 0 },
           replaceSelection: (text) => this.$refs.contentEditorRef?.replaceSelection?.(text),

@@ -12,11 +12,17 @@
             class="tool-button"
             :icon="tool.icon"
             text
+            :disabled="aiDiffActive"
             @click="insertMarkdown(tool)"
           />
         </el-tooltip>
       </div>
       <div class="toolbar-group">
+        <el-tooltip v-if="aiUndoHistory.length" :content="undoHint" placement="top">
+          <span>
+            <el-button size="small" :disabled="aiDiffActive || !canUndoAi" @click="undoAiChange">撤销 AI 修改</el-button>
+          </span>
+        </el-tooltip>
         <el-tooltip content="复制内容" placement="top">
           <el-button class="tool-button" :icon="CopyDocument" text @click="copyContent" />
         </el-tooltip>
@@ -30,18 +36,18 @@
     </div>
 
     <div v-if="aiDiffActive" class="ai-diff-banner">
-      <span class="ai-diff-tip">AI 润色对比中：在下方逐块选择「采用 AI 版 / 保留原文」，右侧预览采纳后的效果</span>
+      <span class="ai-diff-tip">{{ diffConflict || 'AI 润色对比中：逐块选择采用或保留，右侧预览全文效果' }}</span>
       <div class="ai-diff-actions">
-        <el-button type="primary" size="small" @click="applyAiDiff">应用修改</el-button>
+        <el-button type="primary" size="small" :disabled="Boolean(diffConflict)" @click="applyAiDiff">应用修改</el-button>
         <el-button size="small" @click="cancelAiDiff">取消</el-button>
       </div>
     </div>
 
     <div class="markdown-body" :style="{ minHeight: editorHeight }">
       <div v-if="aiDiffActive" class="editor-pane diff-pane">
-        <ParagraphDiff :blocks="aiStore.diff.blocks" />
+        <ParagraphDiff :blocks="aiStore.diff.blocks" @change="aiStore.setDiffChoice" />
       </div>
-      <div v-else class="editor-pane" :class="{ 'is-alone': !previewVisible }">
+      <div v-show="!aiDiffActive" class="editor-pane" :class="{ 'is-alone': !previewVisible }">
         <textarea
           ref="textareaRef"
           v-model="value"
@@ -67,10 +73,9 @@
 </template>
 
 <script setup>
-  import { computed, nextTick, ref } from 'vue'
-  import { Marked } from 'marked'
-  import { markedHighlight } from 'marked-highlight'
-  import hljs from 'highlight.js'
+  import { computed, getCurrentInstance, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
+  import { renderSafeMarkdown } from '@/utils/safeMarkdown'
+  import { applySnapshot, captureEditorSnapshot, snapshotError, sourceOffsetToTextarea, textareaOffsetToSource, undoSnapshot } from './editorSnapshot'
   import {
     ChatLineSquare,
     CopyDocument,
@@ -105,20 +110,32 @@
     enableAiDiff: {
       type: Boolean,
       default: false
+    },
+    documentId: {
+      type: String,
+      default: ''
     }
   })
 
   const emit = defineEmits(['update:modelValue'])
 
   const aiStore = useAiStore()
+  const editorId = `markdown-editor-${getCurrentInstance().uid}`
+  const revision = ref(0)
+  const active = ref(true)
+  const aiUndoHistory = ref([])
 
   // 本编辑器实例是否处于 AI diff 模式
-  const aiDiffActive = computed(() => props.enableAiDiff && aiStore.diff.active)
-  const mergedPreviewHtml = computed(() => marked.parse(aiStore.mergedDiffText || ''))
+  const aiDiffActive = computed(() => props.enableAiDiff && aiStore.diff.active && aiStore.diff.snapshot?.editorId === editorId)
+  const diffConflict = computed(() => aiDiffActive.value ? snapshotError(aiStore.diff.snapshot, getEditorState()) : '')
+  const mergedPreviewHtml = computed(() => renderSafeMarkdown(diffConflict.value ? value.value : aiStore.diffPreviewText))
 
   const applyAiDiff = () => {
-    if (aiStore.applyEditorDiff({ replaceSelection })) {
+    const result = aiStore.applyEditorDiff({ applySelectionSnapshot })
+    if (result.ok) {
       ElMessage.success('已应用 AI 修改')
+    } else {
+      ElMessage.warning(result.message)
     }
   }
 
@@ -129,20 +146,6 @@
   const textareaRef = ref()
   const previewVisible = ref(true)
   const fullscreen = ref(false)
-
-  const marked = new Marked(
-    {
-      gfm: true,
-      breaks: true
-    },
-    markedHighlight({
-      langPrefix: 'hljs language-',
-      highlight(code, lang) {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext'
-        return hljs.highlight(code, { language }).value
-      }
-    })
-  )
 
   const value = computed({
     get: () => props.modelValue || '',
@@ -156,7 +159,56 @@
     return props.height
   })
 
-  const previewHtml = computed(() => marked.parse(value.value || ''))
+  const previewHtml = computed(() => renderSafeMarkdown(value.value))
+
+  watch(() => props.modelValue, () => revision.value++, { flush: 'sync' })
+  watch(() => props.documentId, () => {
+    revision.value++
+    aiUndoHistory.value = []
+    if (aiDiffActive.value) aiStore.closeEditorDiff()
+  }, { flush: 'sync' })
+  const deactivateEditor = () => {
+    active.value = false
+    revision.value++
+    if (aiDiffActive.value) aiStore.closeEditorDiff()
+  }
+  onActivated(() => { active.value = true })
+  onDeactivated(deactivateEditor)
+  onBeforeUnmount(deactivateEditor)
+
+  const getEditorState = () => ({
+    editorId, documentId: props.documentId, revision: revision.value,
+    content: value.value, active: active.value
+  })
+  const captureSelection = () => captureEditorSnapshot(getEditorState(), getSelection())
+  const restoreSelection = (start, end) => nextTick(() => {
+    textareaRef.value?.focus()
+    textareaRef.value?.setSelectionRange(
+      sourceOffsetToTextarea(value.value, start), sourceOffsetToTextarea(value.value, end)
+    )
+  })
+  const applySelectionSnapshot = (snapshot, text) => {
+    const result = applySnapshot(getEditorState(), snapshot, text)
+    if (!result.ok) return result
+    if (result.content !== value.value) {
+      aiUndoHistory.value = [...aiUndoHistory.value.slice(-19), result.undo]
+      value.value = result.content
+    }
+    restoreSelection(snapshot.start, snapshot.start + text.length)
+    return { ok: true }
+  }
+  const undoResult = computed(() => undoSnapshot(getEditorState(), aiUndoHistory.value.at(-1)))
+  const canUndoAi = computed(() => undoResult.value.ok)
+  const undoHint = computed(() => undoResult.value.message || '恢复应用前的正文和选区')
+  const undoAiChange = () => {
+    if (aiDiffActive.value) return
+    const result = undoResult.value
+    if (!result.ok) return ElMessage.warning(result.message)
+    aiUndoHistory.value.pop()
+    value.value = result.content
+    restoreSelection(result.start, result.end)
+    ElMessage.success('已撤销 AI 修改')
+  }
 
   const stats = computed(() => {
     const content = value.value || ''
@@ -190,8 +242,7 @@
     const textarea = textareaRef.value
     if (!textarea) return
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    const { start, end } = getSelection()
     const selected = value.value.slice(start, end)
     const text = `${prefix}${selected || sample}${suffix}`
     value.value = `${value.value.slice(0, start)}${text}${value.value.slice(end)}`
@@ -199,7 +250,7 @@
     nextTick(() => {
       const cursorStart = start + prefix.length
       const cursorEnd = cursorStart + (selected || sample).length
-      textarea.setSelectionRange(cursorStart, cursorEnd)
+      textarea.setSelectionRange(sourceOffsetToTextarea(value.value, cursorStart), sourceOffsetToTextarea(value.value, cursorEnd))
       textarea.focus()
     })
   }
@@ -208,8 +259,7 @@
     const textarea = textareaRef.value
     if (!textarea) return
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    const { start, end } = getSelection()
     const before = value.value.slice(0, start)
     const after = value.value.slice(end)
     const selected = value.value.slice(start, end)
@@ -223,7 +273,7 @@
     nextTick(() => {
       const cursorStart = start + leading.length
       const cursorEnd = cursorStart + content.length
-      textarea.setSelectionRange(cursorStart, cursorEnd)
+      textarea.setSelectionRange(sourceOffsetToTextarea(value.value, cursorStart), sourceOffsetToTextarea(value.value, cursorEnd))
       textarea.focus()
     })
   }
@@ -249,24 +299,21 @@
   const getSelection = () => {
     const textarea = textareaRef.value
     if (!textarea) return { text: '', start: 0, end: 0 }
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    const start = textareaOffsetToSource(value.value, textarea.selectionStart)
+    const end = textareaOffsetToSource(value.value, textarea.selectionEnd)
     return { text: value.value.slice(start, end), start, end }
   }
 
   const replaceSelection = (text) => {
+    if (!textareaRef.value || aiDiffActive.value) return false
     const { start, end } = getSelection()
-    if (start === end && start === 0) {
-      // 无内容时直接替换全部（AI 改写整篇的场景）
-      value.value = text
-      return
-    }
     value.value = `${value.value.slice(0, start)}${text}${value.value.slice(end)}`
+    return true
   }
 
   const insertAtCursor = (text) => {
     const textarea = textareaRef.value
-    const pos = textarea ? textarea.selectionStart : value.value.length
+    const pos = textarea ? getSelection().start : value.value.length
     value.value = `${value.value.slice(0, pos)}${text}\n${value.value.slice(pos)}`
   }
 
@@ -275,6 +322,9 @@
   defineExpose({
     focusTextarea,
     getSelection,
+    getEditorState,
+    captureSelection,
+    applySelectionSnapshot,
     replaceSelection,
     insertAtCursor,
     getFullText

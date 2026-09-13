@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
-import { diffMarkdownBlocks, applyDiffBlocks } from '@/components/ai/agents/writing-assistant/diff'
+import { computed, markRaw, reactive, ref } from 'vue'
+import { diffMarkdownBlocks, applyDiffBlocks } from '../../components/ai/agents/writing-assistant/diff.js'
+import { snapshotError, replaceSnapshotRange } from '../../components/blog/editorSnapshot.js'
 
 /**
  * AI 平台全局状态：
@@ -17,38 +18,58 @@ export const useAiStore = defineStore('ai', () => {
   const activeAgentId = ref('writing-assistant')
 
   // 编辑器内 diff 状态
-  const diff = reactive({ active: false, blocks: [], sourceText: '' })
+  const diff = reactive({ active: false, blocks: [], snapshot: null })
 
   const mergedDiffText = computed(() =>
     diff.active ? applyDiffBlocks(diff.blocks) : ''
   )
 
-  const openEditorDiff = (originalText, resultText) => {
-    diff.blocks = diffMarkdownBlocks(originalText, resultText)
-    diff.sourceText = originalText || ''
+  const diffPreviewText = computed(() => diff.active && diff.snapshot
+    ? replaceSnapshotRange(diff.snapshot, mergedDiffText.value)
+    : '')
+
+  const openEditorDiff = (snapshot, resultText) => {
+    const message = snapshotError(snapshot, contexts.editor?.getEditorState?.())
+    if (message) return { ok: false, message }
+    if (diff.active) return { ok: false, message: '请先应用或取消当前对比' }
+    diff.blocks = diffMarkdownBlocks(snapshot.text, resultText)
+    diff.snapshot = snapshot
     diff.active = true
+    return { ok: true }
   }
 
   const closeEditorDiff = () => {
     diff.active = false
     diff.blocks = []
-    diff.sourceText = ''
+    diff.snapshot = null
   }
 
-  // 把逐块采纳后的最终文本写回编辑器选区；handle 为编辑器句柄
+  const setDiffChoice = ({ index, takeRevised }) => {
+    const blocks = Number.isInteger(index) ? [diff.blocks[index]] : diff.blocks
+    for (const block of blocks) {
+      if (block && block.type !== 'equal') block.takeRevised = takeRevised
+    }
+  }
+
+  // 写回发起请求时的固定选区；失败时保留对比，不触碰正文。
   const applyEditorDiff = (handle) => {
-    if (!diff.active) return false
+    if (!diff.active) return { ok: false, message: '没有待应用的 AI 修改' }
     const finalText = applyDiffBlocks(diff.blocks)
-    handle?.replaceSelection?.(finalText)
+    const result = handle?.applySelectionSnapshot?.(diff.snapshot, finalText)
+    if (!result?.ok) return result || { ok: false, message: '当前编辑器无法应用修改' }
     closeEditorDiff()
-    return true
+    return result
   }
 
   const registerContext = (name, handle) => {
-    contexts[name] = handle
+    contexts[name] = markRaw(handle)
   }
 
-  const unregisterContext = (name) => {
+  const unregisterContext = (name, handle) => {
+    if (handle && contexts[name] !== handle) return
+    if (name === 'editor' && diff.snapshot?.editorId === contexts[name]?.getEditorState?.()?.editorId) {
+      closeEditorDiff()
+    }
     delete contexts[name]
   }
 
@@ -69,8 +90,10 @@ export const useAiStore = defineStore('ai', () => {
     activeAgentId,
     diff,
     mergedDiffText,
+    diffPreviewText,
     openEditorDiff,
     closeEditorDiff,
+    setDiffChoice,
     applyEditorDiff,
     registerContext,
     unregisterContext,
