@@ -55,6 +55,8 @@
           </el-button>
         </div>
 
+        <div v-if="contextNotice" class="context-notice" role="status">{{ contextNotice }}</div>
+
         <!-- 润色/改写完成：diff 已铺在正文编辑器中 -->
         <div v-if="editorDiffOpen" class="editor-diff-notice">
           <div>已在正文编辑器中打开 diff 对比：逐块选择「采用 AI 版 / 保留原文」，右侧预览可实时查看采纳效果。</div>
@@ -68,6 +70,19 @@
           <div v-if="resultText" class="result-body" v-html="renderedResult" />
           <div v-else-if="streaming" class="streaming-hint">
             {{ streamingHint }}<span class="cursor">▌</span>
+          </div>
+          <div v-if="currentAction === 'suggest-tags' && resultReady && tagSuggestion" class="suggestion-options">
+            <el-checkbox v-if="tagSuggestion.category" v-model="includeCategory">分类：{{ tagSuggestion.category }}</el-checkbox>
+            <el-checkbox-group v-model="selectedTags">
+              <el-checkbox v-for="tag in tagSuggestion.tags" :key="tag" :value="tag">{{ tag }}</el-checkbox>
+            </el-checkbox-group>
+            <template v-if="tagSuggestion.newTags.length">
+              <div>可选新标签（保存文章时创建）：</div>
+              <el-checkbox-group v-model="selectedNewTags">
+                <el-checkbox v-for="tag in tagSuggestion.newTags" :key="tag" :value="tag">{{ tag }}</el-checkbox>
+              </el-checkbox-group>
+            </template>
+            <div>回填会追加所选标签，保留文章已有标签。</div>
           </div>
           <div v-if="resultActions.length" class="result-actions">
             <el-button
@@ -118,6 +133,10 @@
   const resultReady = ref(false)
   const tagSuggestion = ref(null)
   let resultOwner = null
+  const contextNotice = ref('')
+  const selectedTags = ref([])
+  const selectedNewTags = ref([])
+  const includeCategory = ref(true)
 
   const editorCtx = computed(() => aiStore.contexts.editor)
   const hasEditor = computed(() => Boolean(editorCtx.value))
@@ -270,7 +289,8 @@
     }
     const selection = editor?.getSelection?.()
     payload.selection = selection?.text || ''
-    payload.cursorContext = editor?.getCursorContext?.() || payload.content
+    payload.cursorContext = editor?.getCursorContext?.() ?? payload.content
+    if (Number.isInteger(selection?.start)) payload.cursorOffset = selection.start
     return payload
   }
 
@@ -315,6 +335,7 @@
     try {
       const res = await request(buildPayload(action), handle.signal)
       if (streamHandle !== handle) return
+      contextNotice.value = res.data?.context?.notice || ''
       if (action === 'summary') {
         const summary = res.data?.summary
         if (typeof summary !== 'string' || !summary.trim()) throw new Error('AI 未返回有效摘要')
@@ -330,6 +351,10 @@
           data.newTags.length ? `建议新建：${data.newTags.join('、')}` : ''
         ].filter(Boolean).join('\n') || '没有建议'
         tagSuggestion.value = data
+        selectedTags.value = [...data.tags]
+        selectedNewTags.value = []
+        includeCategory.value = true
+        if (Array.isArray(data.warnings) && data.warnings.length) ElMessage.warning(data.warnings.join('；'))
       }
       resultReady.value = true
     } catch (error) {
@@ -357,6 +382,9 @@
     streamHandle = handle
     resultReady.value = false
     tagSuggestion.value = null
+    contextNotice.value = ''
+    selectedTags.value = []
+    selectedNewTags.value = []
     resultOwner = captureOwner()
     streaming.value = true
   }
@@ -373,6 +401,9 @@
           if (streamHandle !== handle) return
           generatedText += delta
           resultText.value = generatedText
+        },
+        onContext: (info) => {
+          if (streamHandle === handle) contextNotice.value = info.notice || ''
         },
         onTool: (tool) => {
           if (streamHandle !== handle) return
@@ -443,11 +474,20 @@
 
   const applyTags = () => {
     if (!resultReady.value || !ownsResult() || !tagSuggestion.value) return
-    if (editorCtx.value?.applySuggestion?.(tagSuggestion.value)) {
+    const data = tagSuggestion.value
+    const tags = data.tags.filter(tag => selectedTags.value.includes(tag))
+    const result = editorCtx.value?.applySuggestion?.({
+      category: includeCategory.value ? data.category : '',
+      categoryId: includeCategory.value ? data.categoryId : 0,
+      tags,
+      tagIds: data.tagIds ? data.tags.flatMap((tag, index) => tags.includes(tag) ? [data.tagIds[index]] : []) : undefined,
+      newTags: data.newTags.filter(tag => selectedNewTags.value.includes(tag))
+    })
+    if (result === true || result?.ok) {
       ElMessage.success('已回填分类与标签')
       reset()
     } else {
-      ElMessage.warning('当前页面不支持回填，请手动复制')
+      ElMessage.warning(result?.message || '当前页面不支持回填，请手动复制')
     }
   }
 
@@ -468,6 +508,7 @@
   const reset = () => {
     abortStream()
     resultOwner = null
+    contextNotice.value = ''
     if (editorDiffOpen.value) {
       aiStore.closeEditorDiff()
     }
@@ -558,6 +599,16 @@
     font-weight: 600;
     font-size: 14px;
   }
+}
+
+.context-notice, .suggestion-options {
+  margin-bottom: 8px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #606266;
+  background: #f0f5ff;
+  border-radius: 4px;
 }
 
 .result-body {

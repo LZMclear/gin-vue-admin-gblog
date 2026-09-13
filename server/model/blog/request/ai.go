@@ -10,6 +10,7 @@ type AiChatRequest struct {
 	Content       string          `json:"content"`
 	Selection     string          `json:"selection"`
 	CursorContext string          `json:"cursorContext"`
+	CursorOffset  *int            `json:"cursorOffset,omitempty"`
 	Title         string          `json:"title"`
 	Instruction   string          `json:"instruction"`
 	History       []AiChatMessage `json:"history"`

@@ -27,7 +27,8 @@ export async function consumeAiStream(response, handlers = {}) {
         if (event === 'message') {
           if (typeof data.delta !== 'string') throw new Error('AI 返回了无效的文本数据')
           handlers.onDelta?.(data.delta)
-        } else if (event === 'tool') handlers.onTool?.(data)
+        } else if (event === 'context') handlers.onContext?.(data)
+        else if (event === 'tool') handlers.onTool?.(data)
         else if (event === 'done') {
           if (data.finishReason !== 'stop') throw new Error('生成未完整结束，请重新生成后再应用')
           completed = true

@@ -171,6 +171,7 @@
   } from '@/api/blog/article'
   import MarkdownEditor from '@/components/blog/MarkdownEditor.vue'
   import { useAiStore } from '@/pinia/modules/ai'
+  import { buildSuggestionPatch, cursorContext } from '@/components/ai/agents/writing-assistant/suggestion.js'
 
   const createEmptyForm = () => ({
     title: '',
@@ -308,8 +309,7 @@
           getCursorContext: () => {
             const sel = this.$refs.contentEditorRef?.getSelection?.()
             const content = this.form.content || ''
-            const pos = sel?.start || content.length
-            return content.slice(Math.max(0, pos - 1000), pos)
+            return cursorContext(content, sel?.start)
           },
           getTitle: () => this.form.title || '',
           fillDescription: (text) => {
@@ -318,22 +318,9 @@
             return true
           },
           applySuggestion: (suggestion) => {
-            let matched = false
-            if (suggestion?.category) {
-              const cate = this.categoryList.find(
-                (item) => item.categoryName === suggestion.category
-              )
-              this.form.cate = cate ? cate.id : suggestion.category
-              matched = true
-            }
-            if (Array.isArray(suggestion?.tags) && suggestion.tags.length) {
-              this.form.tagList = suggestion.tags.map((name) => {
-                const tag = this.tagList.find((item) => item.tagName === name)
-                return tag ? tag.id : name
-              })
-              matched = true
-            }
-            return matched
+            const result = buildSuggestionPatch(this.form, suggestion, this.categoryList, this.tagList)
+            if (result.ok) Object.assign(this.form, result.patch)
+            return result
           }
         }
       },

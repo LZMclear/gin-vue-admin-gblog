@@ -2,6 +2,7 @@ package blog
 
 import (
 	"fmt"
+	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -9,6 +10,12 @@ func ValidateAiChatRequest(req *AiChatRequest) error { return validateAiChatRequ
 
 // 字符限制在构建提示词之前执行，HTTP 层另有 2 MiB 请求体限制。
 func ValidateAiRequestSize(req *AiChatRequest) error {
+	if req.CursorOffset != nil && (*req.CursorOffset < 0 || *req.CursorOffset > len(utf16.Encode([]rune(req.Content)))) {
+		return fmt.Errorf("光标位置无效")
+	}
+	if (req.Action == aiActionPolish || req.Action == aiActionRewrite || req.Action == aiActionCustom) && utf8.RuneCountInString(req.Selection) > aiContextLimit() {
+		return fmt.Errorf("选区超过本次 %d 字处理上限，请分段选择；原文未作修改", aiContextLimit())
+	}
 	for _, field := range []struct {
 		name, value string
 		limit       int

@@ -69,3 +69,56 @@ func TestChatCompletionReason(t *testing.T) {
 		})
 	}
 }
+
+func TestSummaryUsesDistributedContext(t *testing.T) {
+	oldConfig, oldDB, oldLog := global.GVA_CONFIG.AI, global.GVA_DB, global.GVA_LOG
+	defer func() {
+		global.GVA_CONFIG.AI, global.GVA_DB, global.GVA_LOG = oldConfig, oldDB, oldLog
+		modelService.Factory().Invalidate()
+	}()
+	global.GVA_DB, global.GVA_LOG = nil, zap.NewNop()
+	var prompt string
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Messages []struct {
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+			w.WriteHeader(400)
+			return
+		}
+		for _, msg := range body.Messages {
+			prompt += msg.Content
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":"test","choices":[{"index":0,"message":{"role":"assistant","content":"覆盖开头、中部和结尾的摘要"},"finish_reason":"stop"}]}`)
+	}))
+	defer provider.Close()
+	global.GVA_CONFIG.AI.Enable = true
+	global.GVA_CONFIG.AI.Provider = "openai"
+	global.GVA_CONFIG.AI.APIKey = "local-test"
+	global.GVA_CONFIG.AI.BaseURL = provider.URL
+	global.GVA_CONFIG.AI.Model = "local-model"
+	global.GVA_CONFIG.AI.DailyLimit = 0
+	global.GVA_CONFIG.AI.ContextLimit = 8000
+	modelService.Factory().Invalidate()
+	source := "开头特征" + strings.Repeat("甲", 10000) + "中部特征" + strings.Repeat("乙", 10000) + "结尾特征"
+	body, _ := json.Marshal(map[string]any{"action": "summary", "content": source, "title": "测试"})
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/blog/ai/summary", strings.NewReader(string(body)))
+	(&AiApi{}).Summary(ctx)
+	for _, part := range []string{"开头特征", "中部特征", "结尾特征"} {
+		if !strings.Contains(prompt, part) {
+			t.Fatal("missing", part)
+		}
+	}
+	if strings.Contains(prompt, "输出永远是 Markdown") {
+		t.Fatal("wrong system prompt")
+	}
+	if !strings.Contains(recorder.Body.String(), `"truncated":true`) || !strings.Contains(recorder.Body.String(), "覆盖开头") {
+		t.Fatal(recorder.Body.String())
+	}
+}

@@ -13,6 +13,7 @@
   import ModelConfig from '../../src/view/ai/modelConfig/modelConfig.vue'
   import { useAiStore } from '../../src/pinia/modules/ai.js'
   import { renderSafeMarkdown } from '../../src/utils/safeMarkdown.js'
+  import { buildSuggestionPatch, cursorContext } from '../../src/components/ai/agents/writing-assistant/suggestion.js'
 
   const editor = ref()
   const showModelConfig = new URLSearchParams(window.location.search).has('models')
@@ -20,6 +21,7 @@
   const documentId = ref('article-a')
   const description = ref('原摘要')
   const suggestion = ref(null)
+  const metadataForm = ref({ cate: 9, tagList: [3] })
   const store = useAiStore()
   onMounted(() => {
     if (showModelConfig) return
@@ -29,9 +31,15 @@
       captureSelection: () => editor.value.captureSelection(),
       applySelectionSnapshot: (snapshot, text) => editor.value.applySelectionSnapshot(snapshot, text),
       getFullText: () => content.value,
+      getCursorContext: () => cursorContext(content.value, editor.value.getSelection().start),
       insertAtCursor: (text) => editor.value.insertAtCursor(text),
       fillDescription: (text) => { description.value = text; return true },
-      applySuggestion: (value) => { suggestion.value = value; return true },
+      applySuggestion: (value) => {
+        const result = buildSuggestionPatch(metadataForm.value, value,
+          [{ id: 1, categoryName: '技术' }], [{ id: 2, tagName: 'Vue' }, { id: 3, tagName: 'Go' }])
+        if (result.ok) { suggestion.value = value; Object.assign(metadataForm.value, result.patch) }
+        return result
+      },
       getTitle: () => '回归测试文章'
     })
     window.aiEditorTest = {
@@ -40,6 +48,7 @@
       changeDocument: async () => { documentId.value = 'article-b'; await nextTick() },
       getDescription: () => description.value,
       getSuggestion: () => suggestion.value,
+      getMetadataForm: () => metadataForm.value,
       leaveEditor: () => store.unregisterContext('editor'),
       renderSafeMarkdown
     }

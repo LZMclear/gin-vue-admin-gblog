@@ -223,6 +223,42 @@ with sync_playwright() as playwright:
     assert '生成的大纲' in content()
     print('PASS: 完整结果仍可正常插入正文')
 
+    # 第三批：结构化建议选择、取材范围提示、光标与选区传参。
+    reset('长文章正文')
+    page.get_by_role('button', name='推荐标签', exact=True).click()
+    expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+    pending_single.pop().fulfill(json={'code': 0, 'data': {
+        'category': '技术', 'categoryId': 1, 'tags': ['Vue'], 'tagIds': [2], 'newTags': ['新标签'],
+        'context': {'notice': '本次选取分布于全文的片段'}, 'warnings': []}})
+    expect(page.locator('.context-notice')).to_contain_text('分布于全文')
+    expect(page.get_by_role('checkbox', name='新标签', exact=True)).not_to_be_checked()
+    page.get_by_role('button', name='回填标签', exact=True).click()
+    assert page.evaluate('window.aiEditorTest.getMetadataForm()') == {'cate': 1, 'tagList': [3, 2]}
+    assert page.evaluate('window.aiEditorTest.getSuggestion()')['newTags'] == []
+    page.get_by_role('button', name='推荐标签', exact=True).click()
+    expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+    pending_single.pop().fulfill(json={'code': 0, 'data': {
+        'category': '技术', 'categoryId': 1, 'tags': ['Vue'], 'tagIds': [2], 'newTags': ['新标签']}})
+    page.get_by_role('checkbox', name='新标签', exact=True).check()
+    page.get_by_role('checkbox', name='分类：技术', exact=True).uncheck()
+    page.get_by_role('button', name='回填标签', exact=True).click()
+    assert page.evaluate('window.aiEditorTest.getMetadataForm()') == {'cate': 1, 'tagList': [3, 2, '新标签']}
+    print('PASS: 新标签默认不采纳，勾选后追加，已有分类和标签不被清空')
+
+    reset('甲😀乙后文')
+    page.locator('.markdown-textarea').evaluate("el => { el.focus(); el.setSelectionRange(0,0); }")
+    with page.expect_request('**/test-api/blog/ai/chat') as request:
+        page.get_by_role('button', name='续写', exact=True).click()
+    assert request.value.post_data_json['cursorOffset'] == 0
+    assert request.value.post_data_json['cursorContext'] == ''
+    expect(page.get_by_role('button', name='停止生成', exact=True)).to_have_count(0)
+    select('😀')
+    with page.expect_request('**/test-api/blog/ai/chat') as request:
+        page.locator('.custom-input textarea').fill('翻译选区')
+        page.get_by_role('button', name='发送', exact=True).click()
+    assert request.value.post_data_json['selection'] == '😀'
+    print('PASS: 续写光标零位置传空前文，自定义指令保留选区')
+
     malicious = '''# 标题
 <img src="/missing" onerror="window.__aiXss=1">
 <a href="java&#x09;script:window.__aiXss=2">危险链接</a>

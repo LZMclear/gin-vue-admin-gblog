@@ -78,6 +78,9 @@ func (a *AiApi) Chat(c *gin.Context) {
 	prepareBlogAiSSEHeaders(c)
 	c.Status(http.StatusOK)
 	flusher.Flush()
+	if renderBlogAiSSE(c, sse.Event{Event: "context", Data: aiService.ContextInfo(&req)}) != nil {
+		return
+	}
 
 	finishReason := "unknown"
 	for {
@@ -146,7 +149,8 @@ func (a *AiApi) Summary(c *gin.Context) {
 		response.FailWithMessage(aiFriendlyError(err), c)
 		return
 	}
-	response.OkWithData(gin.H{"summary": summary}, c)
+	req.Action = "summary"
+	response.OkWithData(gin.H{"summary": summary, "context": aiService.ContextInfo(&req)}, c)
 }
 
 // SuggestTags 推荐分类与标签。
@@ -188,6 +192,8 @@ func (a *AiApi) SuggestTags(c *gin.Context) {
 func aiFriendlyError(err error) string {
 	msg := err.Error()
 	switch {
+	case strings.HasPrefix(msg, "模型未返回"), strings.HasPrefix(msg, "模型推荐结果"), strings.HasPrefix(msg, "模型输出未完整"), strings.HasPrefix(msg, "分类标签目录过大"):
+		return msg
 	case strings.Contains(msg, "exceeds max steps"):
 		return "AI 处理步数超限，请简化指令或稍后重试"
 	case strings.Contains(msg, "未配置可用的大模型"):
