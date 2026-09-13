@@ -1,0 +1,344 @@
+<template>
+  <div class="model-config-page">
+    <el-form inline>
+      <el-form-item>
+        <el-button type="primary" size="small" icon="Plus" @click="openCreateDialog">
+          新增模型
+        </el-button>
+      </el-form-item>
+      <el-form-item>
+        <el-input
+          v-model="queryInfo.name"
+          placeholder="按名称搜索"
+          clearable
+          size="small"
+          style="width: 200px"
+          @keyup.enter="getData"
+          @clear="getData"
+        />
+      </el-form-item>
+      <el-form-item>
+        <el-select
+          v-model="queryInfo.provider"
+          placeholder="供应商"
+          clearable
+          size="small"
+          style="width: 180px"
+          @change="getData"
+        >
+          <el-option
+            v-for="p in providers"
+            :key="p.value"
+            :label="p.label"
+            :value="p.value"
+          />
+        </el-select>
+      </el-form-item>
+    </el-form>
+
+    <el-table v-loading="loading" :data="modelList" border stripe>
+      <el-table-column label="名称" prop="name" min-width="140" />
+      <el-table-column label="供应商" width="150">
+        <template #default="{ row }">{{ providerLabel(row.provider) }}</template>
+      </el-table-column>
+      <el-table-column label="模型" prop="model" min-width="140" />
+      <el-table-column label="API Key" width="120">
+        <template #default="{ row }">
+          <span v-if="row.hasKey">****{{ row.keyTail }}</span>
+          <el-tag v-else type="danger" size="small">未配置</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.status ? 'success' : 'info'" size="small">
+            {{ row.status ? '启用' : '停用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="默认" width="90">
+        <template #default="{ row }">
+          <el-tag v-if="row.isDefault" type="warning" size="small">默认</el-tag>
+          <el-button
+            v-else
+            link
+            type="primary"
+            size="small"
+            @click="setDefault(row.id)"
+          >
+            设为默认
+          </el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
+      <el-table-column label="操作" width="160" fixed="right">
+        <template #default="{ row }">
+          <el-button type="primary" size="small" @click="openEditDialog(row)">编辑</el-button>
+          <el-popconfirm title="确定删除该模型配置吗？" @confirm="remove(row.id)">
+            <template #reference>
+              <el-button type="danger" size="small">删除</el-button>
+            </template>
+          </el-popconfirm>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      class="pagination"
+      :current-page="queryInfo.page"
+      :page-sizes="[10, 20, 30, 50]"
+      :page-size="queryInfo.pageSize"
+      :total="total"
+      layout="total, sizes, prev, pager, next, jumper"
+      background
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+    />
+
+    <!-- 新增/编辑对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="form.id ? '编辑模型' : '新增模型'"
+      width="560px"
+      :close-on-click-modal="false"
+      @closed="resetForm"
+    >
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+        <el-form-item label="显示名称" prop="name">
+          <el-input v-model="form.name" placeholder="如 DeepSeek-V3" />
+        </el-form-item>
+        <el-form-item label="供应商" prop="provider">
+          <el-select v-model="form.provider" class="full-width" @change="providerChanged">
+            <el-option
+              v-for="p in providers"
+              :key="p.value"
+              :label="p.label"
+              :value="p.value"
+            />
+          </el-select>
+          <div v-if="providerHint" class="provider-hint">{{ providerHint }}</div>
+        </el-form-item>
+        <el-form-item v-if="needBaseUrl" label="Base URL" prop="baseUrl">
+          <el-input v-model="form.baseUrl" :placeholder="baseUrlPlaceholder" />
+        </el-form-item>
+        <el-form-item label="API Key" prop="apiKey">
+          <el-input
+            v-model="form.apiKey"
+            type="password"
+            show-password
+            clearable
+            :placeholder="form.id ? '留空表示不修改' : 'sk-...'"
+          />
+        </el-form-item>
+        <el-form-item label="模型标识" prop="model">
+          <el-input v-model="form.model" placeholder="如 deepseek-chat / ep-xxx / gemini-2.0-flash" />
+        </el-form-item>
+        <el-form-item label="温度" prop="temperature">
+          <el-slider v-model="form.temperature" :min="0" :max="2" :step="0.1" show-input />
+        </el-form-item>
+        <el-form-item label="最大输出" prop="maxTokens">
+          <el-input-number v-model="form.maxTokens" :min="256" :max="65536" :step="256" />
+        </el-form-item>
+        <el-form-item label="启用" prop="status">
+          <el-switch v-model="form.status" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="form.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+  import {
+    getModelConfigList,
+    createModelConfig,
+    updateModelConfig,
+    deleteModelConfig,
+    setDefaultModelConfig,
+    getModelProviders
+  } from '@/api/ai/modelConfig'
+  import { ElMessage } from 'element-plus'
+
+  export default {
+    name: 'AiModelConfig',
+    data() {
+      return {
+        loading: false,
+        submitting: false,
+        modelList: [],
+        total: 0,
+        providers: [],
+        queryInfo: {
+          name: '',
+          provider: '',
+          page: 1,
+          pageSize: 10
+        },
+        dialogVisible: false,
+        form: this.createEmptyForm(),
+        rules: {
+          name: [{ required: true, message: '请输入显示名称', trigger: 'blur' }],
+          provider: [{ required: true, message: '请选择供应商', trigger: 'change' }],
+          model: [{ required: true, message: '请输入模型标识', trigger: 'blur' }],
+          apiKey: [
+            {
+              validator: (rule, value, callback) => {
+                if (!this.form.id && !value) {
+                  callback(new Error('新增时 API Key 不能为空'))
+                  return
+                }
+                callback()
+              },
+              trigger: 'blur'
+            }
+          ]
+        }
+      }
+    },
+    computed: {
+      currentProvider() {
+        return this.providers.find((p) => p.value === this.form.provider)
+      },
+      needBaseUrl() {
+        return this.currentProvider ? this.currentProvider.needBaseUrl : true
+      },
+      providerHint() {
+        return this.currentProvider?.hint || ''
+      },
+      baseUrlPlaceholder() {
+        return this.currentProvider?.baseURLPlaceholder || 'https://...'
+      }
+    },
+    created() {
+      this.getProviders()
+      this.getData()
+    },
+    methods: {
+      createEmptyForm() {
+        return {
+          id: 0,
+          name: '',
+          provider: 'openai',
+          baseUrl: '',
+          apiKey: '',
+          model: '',
+          temperature: 0.7,
+          maxTokens: 4096,
+          status: true,
+          remark: ''
+        }
+      },
+      async getProviders() {
+        try {
+          const res = await getModelProviders()
+          this.providers = res.data || []
+        } catch (error) {
+          this.providers = []
+        }
+      },
+      providerLabel(value) {
+        const provider = this.providers.find((p) => p.value === value)
+        return provider ? provider.label : value
+      },
+      async getData() {
+        this.loading = true
+        try {
+          const res = await getModelConfigList(this.queryInfo)
+          this.modelList = (res.data?.list || []).map(row => ({ ...row, id: row.id ?? row.ID }))
+          this.total = res.data?.total || 0
+        } finally {
+          this.loading = false
+        }
+      },
+      handleSizeChange(size) {
+        this.queryInfo.pageSize = size
+        this.getData()
+      },
+      handleCurrentChange(page) {
+        this.queryInfo.page = page
+        this.getData()
+      },
+      providerChanged() {
+        this.form.baseUrl = ''
+      },
+      openCreateDialog() {
+        this.form = this.createEmptyForm()
+        this.dialogVisible = true
+      },
+      openEditDialog(row) {
+        this.form = {
+          id: row.id,
+          name: row.name,
+          provider: row.provider,
+          baseUrl: row.baseUrl,
+          apiKey: '',
+          model: row.model,
+          temperature: row.temperature,
+          maxTokens: row.maxTokens,
+          status: row.status,
+          remark: row.remark || ''
+        }
+        this.dialogVisible = true
+      },
+      resetForm() {
+        this.$refs.formRef?.clearValidate?.()
+      },
+      submit() {
+        this.$refs.formRef.validate(async (valid) => {
+          if (!valid) return
+          this.submitting = true
+          try {
+            if (this.form.id) {
+              await updateModelConfig(this.form)
+              ElMessage.success('更新成功')
+            } else {
+              await createModelConfig(this.form)
+              ElMessage.success('创建成功')
+            }
+            this.dialogVisible = false
+            this.getData()
+          } finally {
+            this.submitting = false
+          }
+        })
+      },
+      async setDefault(id) {
+        await setDefaultModelConfig(id)
+        ElMessage.success('已设为默认，AI 功能将即时使用该模型')
+        this.getData()
+      },
+      async remove(id) {
+        await deleteModelConfig(id)
+        ElMessage.success('删除成功')
+        this.getData()
+      }
+    }
+  }
+</script>
+
+<style scoped lang="scss">
+.model-config-page {
+  padding: 16px;
+  background: #fff;
+}
+
+.pagination {
+  margin-top: 12px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.provider-hint {
+  width: 100%;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+}
+</style>

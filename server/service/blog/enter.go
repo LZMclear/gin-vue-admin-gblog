@@ -20,4 +20,5 @@ type ServiceGroup struct {
 	TelegramService     TelegramService
 	AuthService         AuthService
 	DocsService         DocsService
+	AiService           AiService
 }

@@ -18,9 +18,11 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	publicGroup := routers[1].Group("")
 	publicGroup.Use(blogmw.Recovery())
 	blogRouter := router.RouterGroupApp.Blog
+	aiRouter := router.RouterGroupApp.Ai
 
 	holder(publicGroup, privateGroup)
 
+	aiRouter.ModelConfigRouter.InitModelConfigRouter(privateGroup)
 	blogRouter.InitSiteRouter(publicGroup)
 	blogRouter.InitArchiveRouter(publicGroup)
 	blogRouter.InitAuthRouter(publicGroup)
@@ -40,5 +42,6 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	blogRouter.InitOperationLogRouter(privateGroup)
 	blogRouter.InitTelegramRouter(publicGroup)
 	blogRouter.InitDocsRouter(privateGroup, publicGroup)
+	blogRouter.AiRouter.InitAiRouter(privateGroup, publicGroup)
 
 }
