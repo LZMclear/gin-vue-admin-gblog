@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
+	blogService "github.com/flipped-aurora/gin-vue-admin/server/service/blog"
 	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
@@ -23,21 +25,37 @@ func (a *AiApi) Status(c *gin.Context) {
 	ok, name := aiService.Available()
 	data := gin.H{"enabled": ok, "model": name}
 	if userID := utils.GetUserID(c); userID != 0 {
-		remain, _ := aiService.CheckQuota(userID)
-		data["dailyRemain"] = remain
+		remain, err := aiService.QuotaStatus(c.Request.Context(), userID)
+		if err != nil {
+			data["quotaError"] = err.Error()
+		} else {
+			data["dailyRemain"] = remain
+		}
 	}
 	response.OkWithData(data, c)
 }
 
 // Chat 写作助手统一流式入口。
 func (a *AiApi) Chat(c *gin.Context) {
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+	c.Request = c.Request.WithContext(ctx)
 	var req blogReq.AiChatRequest
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<20)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	if _, err := aiService.CheckQuota(utils.GetUserID(c)); err != nil {
+	if err := blogService.ValidateAiChatRequest(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	if ok, reason := aiService.Available(); !ok {
+		response.FailWithMessage(reason, c)
+		return
+	}
+	if _, err := aiService.ConsumeQuota(c.Request.Context(), utils.GetUserID(c)); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -61,6 +79,7 @@ func (a *AiApi) Chat(c *gin.Context) {
 	c.Status(http.StatusOK)
 	flusher.Flush()
 
+	finishReason := "unknown"
 	for {
 		chunk, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
@@ -75,6 +94,9 @@ func (a *AiApi) Chat(c *gin.Context) {
 			return
 		}
 
+		if chunk.ResponseMeta != nil && chunk.ResponseMeta.FinishReason != "" {
+			finishReason = strings.ToLower(chunk.ResponseMeta.FinishReason)
+		}
 		if len(chunk.ToolCalls) > 0 {
 			for _, tc := range chunk.ToolCalls {
 				args := map[string]any{}
@@ -91,12 +113,13 @@ func (a *AiApi) Chat(c *gin.Context) {
 			}
 		}
 	}
-	_ = renderBlogAiSSE(c, sse.Event{Event: "done", Data: gin.H{"finishReason": "stop"}})
+	_ = renderBlogAiSSE(c, sse.Event{Event: "done", Data: gin.H{"finishReason": finishReason}})
 }
 
 // Summary 生成文章摘要。
 func (a *AiApi) Summary(c *gin.Context) {
 	var req blogReq.AiChatRequest
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<20)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -105,14 +128,22 @@ func (a *AiApi) Summary(c *gin.Context) {
 		response.FailWithMessage("正文内容不能为空", c)
 		return
 	}
-	if _, err := aiService.CheckQuota(utils.GetUserID(c)); err != nil {
+	if err := blogService.ValidateAiRequestSize(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	if ok, reason := aiService.Available(); !ok {
+		response.FailWithMessage(reason, c)
+		return
+	}
+	if _, err := aiService.ConsumeQuota(c.Request.Context(), utils.GetUserID(c)); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 	summary, err := aiService.GenerateSummary(c.Request.Context(), &req)
 	if err != nil {
 		global.GVA_LOG.Error("生成摘要失败", zap.Error(err))
-		response.FailWithMessage("生成摘要失败: "+err.Error(), c)
+		response.FailWithMessage(aiFriendlyError(err), c)
 		return
 	}
 	response.OkWithData(gin.H{"summary": summary}, c)
@@ -121,6 +152,7 @@ func (a *AiApi) Summary(c *gin.Context) {
 // SuggestTags 推荐分类与标签。
 func (a *AiApi) SuggestTags(c *gin.Context) {
 	var req blogReq.AiChatRequest
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<20)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -129,14 +161,22 @@ func (a *AiApi) SuggestTags(c *gin.Context) {
 		response.FailWithMessage("正文内容不能为空", c)
 		return
 	}
-	if _, err := aiService.CheckQuota(utils.GetUserID(c)); err != nil {
+	if err := blogService.ValidateAiRequestSize(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	if ok, reason := aiService.Available(); !ok {
+		response.FailWithMessage(reason, c)
+		return
+	}
+	if _, err := aiService.ConsumeQuota(c.Request.Context(), utils.GetUserID(c)); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 	suggestion, err := aiService.SuggestTags(c.Request.Context(), &req)
 	if err != nil {
 		global.GVA_LOG.Error("推荐标签失败", zap.Error(err))
-		response.FailWithMessage("推荐标签失败: "+err.Error(), c)
+		response.FailWithMessage(aiFriendlyError(err), c)
 		return
 	}
 	response.OkWithData(suggestion, c)

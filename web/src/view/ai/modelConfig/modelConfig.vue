@@ -249,7 +249,7 @@
         this.loading = true
         try {
           const res = await getModelConfigList(this.queryInfo)
-          this.modelList = res.data?.list || []
+          this.modelList = (res.data?.list || []).map(row => ({ ...row, id: row.id ?? row.ID }))
           this.total = res.data?.total || 0
         } finally {
           this.loading = false

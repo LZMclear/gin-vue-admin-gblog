@@ -313,8 +313,10 @@
 
   const insertAtCursor = (text) => {
     const textarea = textareaRef.value
+    if (!textarea || !active.value || aiDiffActive.value) return false
     const pos = textarea ? getSelection().start : value.value.length
     value.value = `${value.value.slice(0, pos)}${text}\n${value.value.slice(pos)}`
+    return true
   }
 
   const getFullText = () => value.value

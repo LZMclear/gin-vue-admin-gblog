@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 	"time"
@@ -12,12 +13,12 @@ import (
 	fmodel "github.com/cloudwego/eino/components/model"
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	aiModel "github.com/flipped-aurora/gin-vue-admin/server/model/ai"
-	"google.golang.org/genai"
 	"go.uber.org/zap"
+	"google.golang.org/genai"
 )
 
 // ModelFactory 按数据库中的默认模型配置动态创建并缓存 ChatModel。
-// 缓存键为 {configID}:{updatedAt}，配置变更后自然失效，无需重启。
+// 缓存键包含模型参数与密钥的摘要，配置变更后自然失效，无需重启。
 type ModelFactory struct {
 	mu       sync.RWMutex
 	cached   fmodel.ToolCallingChatModel
@@ -70,7 +71,7 @@ func (f *ModelFactory) Get(ctx context.Context) (fmodel.ToolCallingChatModel, er
 		return nil, err
 	}
 
-	key := fmt.Sprintf("%d:%d", cfg.ID, cfg.UpdatedAt.Unix())
+	key := modelConfigCacheKey(cfg)
 	f.mu.RLock()
 	if f.cacheKey == key && f.cached != nil {
 		defer f.mu.RUnlock()
@@ -88,6 +89,10 @@ func (f *ModelFactory) Get(ctx context.Context) (fmodel.ToolCallingChatModel, er
 	f.cacheKey = key
 	f.mu.Unlock()
 	return cm, nil
+}
+
+func modelConfigCacheKey(cfg *aiModel.AiModelConfig) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%d|%q|%q|%q|%q|%g|%d", cfg.ID, cfg.Provider, cfg.BaseURL, cfg.APIKey, cfg.Model, cfg.Temperature, cfg.MaxTokens))))
 }
 
 func (f *ModelFactory) build(ctx context.Context, cfg *aiModel.AiModelConfig) (fmodel.ToolCallingChatModel, error) {
@@ -141,5 +146,7 @@ func (f *ModelFactory) Invalidate() {
 	f.lastCfg = nil
 	f.lastFetch = time.Time{}
 	f.ttlMu.Unlock()
-	global.GVA_LOG.Info("AI 模型配置缓存已失效", zap.String("op", "invalidate"))
+	if global.GVA_LOG != nil {
+		global.GVA_LOG.Info("AI 模型配置缓存已失效", zap.String("op", "invalidate"))
+	}
 }

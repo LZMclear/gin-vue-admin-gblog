@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/components/tool"
+	"github.com/cloudwego/eino/compose"
 	react "github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	blogReq "github.com/flipped-aurora/gin-vue-admin/server/model/blog/request"
 	aiService "github.com/flipped-aurora/gin-vue-admin/server/service/ai"
-	"go.uber.org/zap"
 )
 
 const (
@@ -42,6 +40,9 @@ func (s *AiService) Available() (bool, string) {
 }
 
 func validateAiChatRequest(r *AiChatRequest) error {
+	if err := ValidateAiRequestSize(r); err != nil {
+		return err
+	}
 	switch r.Action {
 	case aiActionPolish, aiActionRewrite:
 		if strings.TrimSpace(r.Selection) == "" {
@@ -63,29 +64,6 @@ func validateAiChatRequest(r *AiChatRequest) error {
 		return fmt.Errorf("不支持的 action: %s", r.Action)
 	}
 	return nil
-}
-
-// CheckQuota 校验并占用当日调用额度，返回剩余次数（-1 表示未启用限制）。
-func (s *AiService) CheckQuota(userID uint) (int64, error) {
-	limit := global.GVA_CONFIG.AI.DailyLimit
-	if limit <= 0 || global.GVA_REDIS == nil {
-		return -1, nil
-	}
-	key := fmt.Sprintf("ai:quota:%d:%s", userID, time.Now().Format("20060102"))
-	count, err := global.GVA_REDIS.Incr(context.Background(), key).Result()
-	if err != nil {
-		// Redis 故障不阻断业务
-		global.GVA_LOG.Warn("AI 配额统计失败，跳过限制", zap.Error(err))
-		return -1, nil
-	}
-	if count == 1 {
-		global.GVA_REDIS.Expire(context.Background(), key, 24*time.Hour)
-	}
-	if count > int64(limit) {
-		return 0, fmt.Errorf("今日 AI 调用次数已达上限（%d 次/日）", limit)
-	}
-	remain := int64(limit) - count
-	return remain, nil
 }
 
 // buildSystemPrompt 生成写作助手的系统提示词。

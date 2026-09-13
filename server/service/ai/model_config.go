@@ -18,13 +18,14 @@ func (s *ModelConfigService) factoryOrDefault() *ModelFactory {
 
 type ModelConfigItem struct {
 	aiModel.AiModelConfig
-	HasKey bool   `json:"hasKey"`
+	ID      uint   `json:"id"`
+	HasKey  bool   `json:"hasKey"`
 	KeyTail string `json:"keyTail"`
 }
 
 // toSafeItem 将配置转为对外项：不回传 api key，仅返回是否已配置与尾4位。
 func toSafeItem(cfg aiModel.AiModelConfig) ModelConfigItem {
-	item := ModelConfigItem{AiModelConfig: cfg}
+	item := ModelConfigItem{AiModelConfig: cfg, ID: cfg.ID}
 	if cfg.APIKey != "" {
 		item.HasKey = true
 		runes := []rune(cfg.APIKey)
@@ -98,15 +99,21 @@ func (s *ModelConfigService) Create(info aiReq.AiModelConfigUpsert) error {
 		Temperature: info.Temperature, MaxTokens: info.MaxTokens,
 		Status: info.Status, Remark: info.Remark,
 	}
-	return global.GVA_DB.Transaction(func(tx *gorm.DB) error {
+	err := global.GVA_DB.Transaction(func(tx *gorm.DB) error {
 		if info.Status {
 			// 首个启用配置自动成为默认，保证开箱可用
 			var count int64
-			tx.Model(&aiModel.AiModelConfig{}).Count(&count)
+			if err := tx.Model(&aiModel.AiModelConfig{}).Count(&count).Error; err != nil {
+				return err
+			}
 			record.IsDefault = count == 0
 		}
 		return tx.Create(&record).Error
 	})
+	if err == nil {
+		s.factoryOrDefault().Invalidate()
+	}
+	return err
 }
 
 func (s *ModelConfigService) Update(info aiReq.AiModelConfigUpsert) error {
@@ -151,7 +158,7 @@ func (s *ModelConfigService) Delete(id uint) error {
 }
 
 func (s *ModelConfigService) SetDefault(id uint) error {
-	return global.GVA_DB.Transaction(func(tx *gorm.DB) error {
+	err := global.GVA_DB.Transaction(func(tx *gorm.DB) error {
 		var record aiModel.AiModelConfig
 		if err := tx.First(&record, id).Error; err != nil {
 			return errors.New("配置不存在")
@@ -165,9 +172,12 @@ func (s *ModelConfigService) SetDefault(id uint) error {
 		if err := tx.Model(&record).Update("is_default", true).Error; err != nil {
 			return err
 		}
-		s.factoryOrDefault().Invalidate()
 		return nil
 	})
+	if err == nil {
+		s.factoryOrDefault().Invalidate()
+	}
+	return err
 }
 
 // Providers 返回支持的供应商枚举，供前端表单动态渲染。
@@ -175,7 +185,7 @@ func (s *ModelConfigService) Providers() []map[string]any {
 	return []map[string]any{
 		{
 			"value": "openai", "label": "OpenAI 兼容",
-			"hint": "DeepSeek、通义千问、Kimi、智谱 GLM、OpenRouter、Ollama 等",
+			"hint":        "DeepSeek、通义千问、Kimi、智谱 GLM、OpenRouter、Ollama 等",
 			"needBaseUrl": true, "baseURLPlaceholder": "如 https://api.deepseek.com/v1",
 		},
 		{"value": "ark", "label": "豆包（火山方舟 Ark）", "needBaseUrl": false},

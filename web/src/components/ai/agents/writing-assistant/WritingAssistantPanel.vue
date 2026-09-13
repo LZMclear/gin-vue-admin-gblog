@@ -87,7 +87,7 @@
 
       <!-- 历史轮次 -->
       <div v-if="history.length" class="history-bar">
-        <span>对话上下文 {{ history.length }} 轮</span>
+        <span>对话上下文 {{ Math.floor(history.length / 2) }} 轮</span>
         <el-button link size="small" @click="history = []">清空</el-button>
       </div>
     </template>
@@ -115,6 +115,9 @@
   const history = ref([])
   const currentAction = ref(null)
   let streamHandle = null
+  const resultReady = ref(false)
+  const tagSuggestion = ref(null)
+  let resultOwner = null
 
   const editorCtx = computed(() => aiStore.contexts.editor)
   const hasEditor = computed(() => Boolean(editorCtx.value))
@@ -148,7 +151,10 @@
     disabledReason.value = ''
     try {
       const res = await getAiStatus()
-      if (res.data?.enabled) {
+      if (res.data?.quotaError) {
+        aiEnabled.value = false
+        disabledReason.value = res.data.quotaError
+      } else if (res.data?.enabled) {
         aiEnabled.value = true
       } else {
         aiEnabled.value = false
@@ -222,6 +228,8 @@
   const renderedResult = computed(() => renderSafeMarkdown(resultText.value))
 
   const resultActions = computed(() => {
+    if (!resultText.value) return []
+    if (!resultReady.value) return [{ key: 'copy', label: '复制', handler: copyResult }]
     const actions = []
     if (currentAction.value === 'summary') {
       actions.push({ key: 'fill', label: '回填摘要', handler: fillDescription })
@@ -294,46 +302,67 @@
     await startStream(buildPayload('custom', { instruction: instruction.value.trim() }))
   }
 
-  const runSummary = async () => {
-    currentAction.value = 'summary'
+  const runSummary = () => runSingle('summary', generateSummary)
+  const runSuggestTags = () => runSingle('suggest-tags', suggestTags)
+
+  const runSingle = async (action, request) => {
+    const handle = new AbortController()
+    beginTask(handle)
+    currentAction.value = action
     resultText.value = ''
-    resultTitle.value = '文章摘要'
-    streaming.value = true
+    resultTitle.value = action === 'summary' ? '文章摘要' : '分类与标签建议'
+    streamingHint.value = '正在思考'
     try {
-      const res = await generateSummary(buildPayload('summary'))
-      resultText.value = res.data?.summary || ''
+      const res = await request(buildPayload(action), handle.signal)
+      if (streamHandle !== handle) return
+      if (action === 'summary') {
+        const summary = res.data?.summary
+        if (typeof summary !== 'string' || !summary.trim()) throw new Error('AI 未返回有效摘要')
+        resultText.value = summary
+      } else {
+        const data = res.data
+        if (!data || !Array.isArray(data.tags) || !Array.isArray(data.newTags) ||
+          [...data.tags, ...data.newTags].some(value => typeof value !== 'string') ||
+          (data.category != null && typeof data.category !== 'string')) throw new Error('AI 返回了无效的标签建议')
+        resultText.value = [
+          data.category ? `分类：${data.category}` : '',
+          data.tags.length ? `标签：${data.tags.join('、')}` : '',
+          data.newTags.length ? `建议新建：${data.newTags.join('、')}` : ''
+        ].filter(Boolean).join('\n') || '没有建议'
+        tagSuggestion.value = data
+      }
+      resultReady.value = true
     } catch (error) {
-      ElMessage.error(error?.msg || '生成摘要失败')
+      if (streamHandle === handle && !handle.signal.aborted) ElMessage.error(error?.response?.data?.msg || error?.message || 'AI 请求失败')
     } finally {
-      streaming.value = false
+      if (streamHandle === handle) {
+        streaming.value = false
+        streamHandle = null
+      }
     }
   }
 
-  const runSuggestTags = async () => {
-    currentAction.value = 'suggest-tags'
-    resultText.value = ''
-    resultTitle.value = '分类与标签建议'
-    streaming.value = true
-    try {
-      const res = await suggestTags(buildPayload('suggest-tags'))
-      const data = res.data || {}
-      resultText.value = [
-        data.category ? `分类：${data.category}` : '',
-        data.tags?.length ? `标签：${data.tags.join('、')}` : '',
-        data.newTags?.length ? `建议新建：${data.newTags.join('、')}` : ''
-      ].filter(Boolean).join('\n') || '没有建议'
-      tagSuggestion.value = data
-    } catch (error) {
-      ElMessage.error(error?.msg || '推荐标签失败')
-    } finally {
-      streaming.value = false
-    }
+  const captureOwner = () => {
+    const context = editorCtx.value
+    const state = context?.getEditorState?.()
+    return { context, editorId: state?.editorId, documentId: state?.documentId }
   }
-
-  let tagSuggestion = ref(null)
+  const ownsResult = () => {
+    const owner = captureOwner()
+    return resultOwner && owner.context === resultOwner.context &&
+      owner.editorId === resultOwner.editorId && owner.documentId === resultOwner.documentId
+  }
+  const beginTask = (handle) => {
+    streamHandle?.abort()
+    streamHandle = handle
+    resultReady.value = false
+    tagSuggestion.value = null
+    resultOwner = captureOwner()
+    streaming.value = true
+  }
 
   const startStream = (payload, snapshot = null) => {
-    streaming.value = true
+    resultReady.value = false
     const userContent = payload.instruction || payload.selection || payload.content || ''
     let generatedText = ''
     let completed = false
@@ -361,15 +390,17 @@
       }
     )
 
-    streamHandle = handle
+    beginTask(handle)
     return handle.promise.then(({ aborted, errorMessage }) => {
       if (streamHandle !== handle) return
       streaming.value = false
       streamHandle = null
-      if (aborted || errorMessage || !generatedText) return
+      if (aborted || errorMessage) return
+      if (!generatedText.trim()) return ElMessage.warning('AI 未返回有效内容，请重新生成')
       // 不完整的输出不能进入正文替换流程。
       if (!completed) return ElMessage.warning('生成未完整结束，已保留结果供复制，请重新生成后再应用')
 
+      resultReady.value = true
       history.value.push(
         { role: 'user', content: userContent.slice(0, 2000) },
         { role: 'assistant', content: generatedText.slice(0, 2000) }
@@ -385,19 +416,23 @@
   }
 
   const abortStream = () => {
-    streamHandle?.abort()
-    streaming.value = false
+    const handle = streamHandle
     streamHandle = null
+    handle?.abort()
+    resultReady.value = false
+    streaming.value = false
   }
 
   // ---- 结果操作 ----
   const insertResult = () => {
-    editorCtx.value?.insertAtCursor?.(resultText.value)
+    if (!resultReady.value || !ownsResult()) return
+    if (!editorCtx.value?.insertAtCursor?.(resultText.value)) return ElMessage.warning('当前编辑器无法插入，请手动复制')
     ElMessage.success('已插入到光标处')
     reset()
   }
 
   const fillDescription = () => {
+    if (!resultReady.value || !ownsResult()) return
     if (editorCtx.value?.fillDescription?.(resultText.value)) {
       ElMessage.success('已回填到文章摘要')
       reset()
@@ -407,7 +442,7 @@
   }
 
   const applyTags = () => {
-    if (!tagSuggestion.value) return
+    if (!resultReady.value || !ownsResult() || !tagSuggestion.value) return
     if (editorCtx.value?.applySuggestion?.(tagSuggestion.value)) {
       ElMessage.success('已回填分类与标签')
       reset()
@@ -431,6 +466,8 @@
   }
 
   const reset = () => {
+    abortStream()
+    resultOwner = null
     if (editorDiffOpen.value) {
       aiStore.closeEditorDiff()
     }
@@ -438,6 +475,18 @@
     currentAction.value = null
     tagSuggestion.value = null
   }
+  // 文档身份变化同步取消任务，防止旧响应写入新文章的结果、历史或表单。
+  watch(
+    [() => editorCtx.value, () => editorCtx.value?.getEditorState?.()?.editorId,
+      () => editorCtx.value?.getEditorState?.()?.documentId, () => editorCtx.value?.getEditorState?.()?.active],
+    () => {
+      reset()
+      history.value = []
+      instruction.value = ''
+      syncSelection()
+    },
+    { flush: 'sync' }
+  )
 </script>
 
 <style scoped lang="scss">

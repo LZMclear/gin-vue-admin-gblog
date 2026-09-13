@@ -140,6 +140,89 @@ with sync_playwright() as playwright:
     defer_response[0] = False
     print('PASS: 不完整输出不允许进入对比替换流程')
 
+    # 第二批：JSON 请求取消与重试，以及旧请求 finally 不得清除新请求状态。
+    pending_single = []
+    page.route('**/test-api/blog/ai/summary', lambda route: pending_single.append(route))
+    page.route('**/test-api/blog/ai/suggest-tags', lambda route: pending_single.append(route))
+    for button, payload, expected, apply_button in [
+        ('生成摘要', {'summary': '新的摘要'}, '新的摘要', '回填摘要'),
+        ('推荐标签', {'category': '技术', 'tags': ['Vue'], 'newTags': []}, 'Vue', '回填标签')
+    ]:
+        reset('测试正文')
+        page.get_by_role('button', name=button, exact=True).click()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+        page.wait_for_function('true')
+        assert pending_single
+        old = pending_single.pop()
+        page.get_by_role('button', name='停止生成', exact=True).click()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_have_count(0)
+        page.get_by_role('button', name=button, exact=True).click()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+        old.fulfill(json={'code': 0, 'data': payload})
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+        assert pending_single
+        pending_single.pop().fulfill(json={'code': 0, 'data': payload})
+        expect(page.locator('.result-body')).to_contain_text(expected)
+        page.get_by_role('button', name=apply_button, exact=True).click()
+        if button == '生成摘要':
+            assert page.evaluate('window.aiEditorTest.getDescription()') == '新的摘要'
+        else:
+            assert page.evaluate('window.aiEditorTest.getSuggestion()').get('tags') == ['Vue']
+        expect(page.locator('.el-message--error')).to_have_count(0)
+
+        reset('文章 A')
+        page.get_by_role('button', name=button, exact=True).click()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+        assert pending_single
+        old = pending_single.pop()
+        page.evaluate('window.aiEditorTest.changeDocument()')
+        old.fulfill(json={'code': 0, 'data': payload})
+        expect(page.locator('.result-body')).to_have_count(0)
+        expect(page.get_by_role('button', name=apply_button, exact=True)).to_have_count(0)
+        assert page.evaluate('window.aiEditorTest.getDescription()') == '原摘要'
+        assert page.evaluate('window.aiEditorTest.getSuggestion()') is None
+    print('PASS: 摘要/标签取消、立即重试、旧响应隔离、成功回填、跨文章清理')
+
+    reset('测试正文')
+    page.get_by_role('button', name='生成摘要', exact=True).click()
+    expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+    pending_single.pop().fulfill(json={'code': 7, 'msg': '今日 AI 调用次数已达上限'})
+    expect(page.locator('.el-message--error')).to_have_count(1)
+    expect(page.locator('.el-message--error')).to_contain_text('今日 AI 调用次数已达上限')
+    expect(page.get_by_role('button', name='回填摘要', exact=True)).to_have_count(0)
+    page.get_by_role('button', name='推荐标签', exact=True).click()
+    expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+    pending_single.pop().fulfill(json={'code': 0, 'data': {'tags': 'wrong', 'newTags': []}})
+    expect(page.get_by_role('button', name='回填标签', exact=True)).to_have_count(0)
+    print('PASS: JSON 业务错误只提示一次；无效标签结果不可回填')
+
+    reset('测试正文')
+    response_text[0] = '文章 A 的结果'
+    page.locator('.custom-input textarea').fill('文章 A 的指令')
+    page.get_by_role('button', name='发送', exact=True).click()
+    expect(page.locator('.history-bar')).to_contain_text('1 轮')
+    page.evaluate('window.aiEditorTest.changeDocument()')
+    expect(page.locator('.result-body')).to_have_count(0)
+    expect(page.locator('.history-bar')).to_have_count(0)
+    expect(page.locator('.custom-input textarea')).to_have_value('')
+    with page.expect_request('**/test-api/blog/ai/chat') as request:
+        page.locator('.custom-input textarea').fill('文章 B 的指令')
+        page.get_by_role('button', name='发送', exact=True).click()
+    assert request.value.post_data_json['history'] == []
+    expect(page.locator('.history-bar')).to_contain_text('1 轮')
+    page.evaluate('window.aiEditorTest.leaveEditor()')
+    expect(page.locator('.history-bar')).to_have_count(0)
+    expect(page.locator('.result-body')).to_have_count(0)
+    print('PASS: 文章切换和离开页面清空结果、指令、历史；新请求不带旧历史')
+
+    reset('原正文')
+    response_text[0] = '生成的大纲'
+    page.get_by_role('button', name='生成大纲', exact=True).click()
+    expect(page.get_by_role('button', name='插入到光标处', exact=True)).to_be_enabled()
+    page.get_by_role('button', name='插入到光标处', exact=True).click()
+    assert '生成的大纲' in content()
+    print('PASS: 完整结果仍可正常插入正文')
+
     malicious = '''# 标题
 <img src="/missing" onerror="window.__aiXss=1">
 <a href="java&#x09;script:window.__aiXss=2">危险链接</a>
@@ -184,6 +267,35 @@ const text = '<img onerror="bad">'
     expect(page.locator('.ai-diff-banner')).to_be_visible()
     assert_safe('.markdown-preview')
     print('PASS: 正文预览、助手结果、diff 预览过滤危险 HTML，保留表格、代码高亮与任务列表')
+    # 模型管理使用真实组件，验证旧 ID 响应兼容以及各操作发送的模型 ID。
+    model_requests = []
+    def model_route(route):
+        request = route.request
+        if request.method == 'GET':
+            if request.url.endswith('/providers'):
+                route.fulfill(json={'code': 0, 'data': [{'value': 'openai', 'label': 'OpenAI', 'needBaseUrl': True}]})
+            else:
+                route.fulfill(json={'code': 0, 'data': {'list': [{'ID': 42, 'name': '测试模型', 'provider': 'openai', 'model': 'test', 'baseUrl': 'https://example.invalid/v1', 'temperature': 0.7, 'maxTokens': 4096, 'status': True, 'hasKey': True, 'keyTail': '1234'}], 'total': 1}})
+        else:
+            model_requests.append((request.method, request.url, request.post_data_json if request.post_data else None))
+            route.fulfill(json={'code': 0, 'data': {}})
+    page.route('**/test-api/ai/modelConfig**', model_route)
+    page.goto(args.base_url + '/tests/ai-editor/index.html?models')
+    page.wait_for_load_state('networkidle')
+    page.get_by_role('button', name='编辑', exact=True).click()
+    expect(page.get_by_role('dialog')).to_contain_text('编辑模型')
+    page.get_by_role('button', name='保存', exact=True).click()
+    expect(page.get_by_role('dialog')).not_to_be_visible()
+    assert model_requests[-1][0] == 'PUT' and model_requests[-1][2]['id'] == 42
+    assert model_requests[-1][2]['apiKey'] == ''
+    page.get_by_role('button', name='设为默认', exact=True).click()
+    expect(page.locator('.el-message').filter(has_text='已设为默认')).to_be_visible()
+    assert model_requests[-1][1].endswith('/setDefault/42')
+    page.get_by_role('button', name='删除', exact=True).click()
+    page.locator('.el-popconfirm__action .el-button--primary').click()
+    expect(page.locator('.el-message').filter(has_text='删除成功')).to_be_visible()
+    assert model_requests[-1][0] == 'DELETE' and model_requests[-1][1].endswith('/42')
+    print('PASS: 模型列表 ID 兼容，编辑、默认、删除均携带正确 ID')
     assert not errors, errors
     browser.close()
     print('All browser regressions passed.')
