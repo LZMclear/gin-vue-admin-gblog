@@ -259,6 +259,43 @@ with sync_playwright() as playwright:
     assert request.value.post_data_json['selection'] == '😀'
     print('PASS: 续写光标零位置传空前文，自定义指令保留选区')
 
+    # 第四批：标题回填、重试、自定义对比。运行需要 Python Playwright。
+    reset('用于起标题的正文')
+    response_text[0] = '1. 标题甲\n2. 标题乙'
+    page.get_by_role('button', name='起标题', exact=True).click()
+    expect(page.locator('.title-candidate')).to_have_count(2)
+    page.locator('.title-candidate').nth(1).get_by_role('button', name='采用标题', exact=True).click()
+    assert page.evaluate('window.aiEditorTest.getTitle()') == '标题乙'
+    page.get_by_role('button', name='起标题', exact=True).click()
+    expect(page.locator('.title-candidate')).to_have_count(2)
+    page.evaluate("window.aiEditorTest.setTitle('人工编辑的标题')")
+    page.locator('.title-candidate').first.get_by_role('button', name='采用标题', exact=True).click()
+    assert page.evaluate('window.aiEditorTest.getTitle()') == '人工编辑的标题'
+    print('PASS: 标题候选回填和人工编辑冲突保护')
+
+    reset('前文原选区后文')
+    select('原选区')
+    page.locator('summary').filter(has_text='正文生成偏好').click()
+    page.get_by_role('combobox', name='写作语气').click()
+    page.get_by_role('option', name='正式严谨', exact=True).click()
+    response_text[0] = '新选区'
+    page.locator('.custom-input textarea').fill('重新表述选区')
+    with page.expect_request('**/test-api/blog/ai/chat') as request:
+        page.get_by_role('button', name='发送', exact=True).click()
+    assert request.value.post_data_json['tone'] == 'formal'
+    expect(page.get_by_role('button', name='与原选区对比', exact=True)).to_be_enabled()
+    with page.expect_request('**/test-api/blog/ai/chat') as retry:
+        page.get_by_role('button', name='重新生成', exact=True).click()
+    assert retry.value.post_data_json == request.value.post_data_json
+    expect(page.locator('.history-bar')).to_contain_text('1 轮')
+    page.get_by_role('button', name='与原选区对比', exact=True).click()
+    expect(page.locator('.ai-diff-banner')).to_be_visible()
+    page.get_by_role('radio', name='分栏', exact=True).check()
+    expect(page.locator('.split-pane')).to_have_count(1)
+    page.get_by_role('button', name='应用修改', exact=True).click()
+    assert content() == '前文新选区后文'
+    print('PASS: 偏好传参、重试固定条件且不叠加历史、自定义选区对比与分栏采纳')
+
     malicious = '''# 标题
 <img src="/missing" onerror="window.__aiXss=1">
 <a href="java&#x09;script:window.__aiXss=2">危险链接</a>

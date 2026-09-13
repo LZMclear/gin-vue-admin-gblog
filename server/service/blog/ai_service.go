@@ -74,11 +74,12 @@ func (s *AiService) buildSystemPrompt() string {
 3. 可调用工具参考博主历史文章的行文风格：search_my_blogs（按关键词搜索）、get_blog_content（按ID读全文）。工具名必须与上述名称完全一致，禁止拼写变体。
 4. 中文写作，代码块标注语言；不编造事实；不确定时保留原意而非添加虚构内容。
 5. 润色/改写时输出必须与原文保持相同的段落数量与顺序（逐段对应，不合并、不拆分、不增删段落），以便前端做逐段对比。
-6. 润色/改写输出长度与原文相当；续写不超过300字。`
+6. 未指定篇幅偏好时，润色/改写输出长度与原文相当；续写不超过300字。`
 }
 
 // buildUserMessage 按 action 拼装用户消息。
-func (s *AiService) buildUserMessage(req *AiChatRequest) string {
+func (s *AiService) buildUserMessage(req *AiChatRequest) (message string) {
+	defer func() { message += writingPreferences(req) }()
 	contextText, _ := chatContext(req)
 
 	switch req.Action {
@@ -93,7 +94,7 @@ func (s *AiService) buildUserMessage(req *AiChatRequest) string {
 	case aiActionOutline:
 		return fmt.Sprintf("文章标题：%s\n作者的要求：%s\n参考正文：%s\n\n请生成一份 Markdown 层级大纲。", req.Title, req.Instruction, contextText)
 	case aiActionTitle:
-		return fmt.Sprintf("请为以下内容拟5个候选标题，每行一个：\n\n%s", contextText)
+		return fmt.Sprintf("当前标题或主题：%s\n请为以下内容拟5个候选标题，每行一个纯文本标题，不加序号、说明或 Markdown 标记，每个标题不超过120字：\n\n%s", req.Title, contextText)
 	case aiActionCustom:
 		return fmt.Sprintf("作者指令：%s\n\n%s", req.Instruction, contextText)
 	}

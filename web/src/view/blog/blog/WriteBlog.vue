@@ -171,6 +171,7 @@
   } from '@/api/blog/article'
   import MarkdownEditor from '@/components/blog/MarkdownEditor.vue'
   import { useAiStore } from '@/pinia/modules/ai'
+  import { titleFillError } from '@/components/ai/agents/writing-assistant/writingTask.js'
   import { buildSuggestionPatch, cursorContext } from '@/components/ai/agents/writing-assistant/suggestion.js'
 
   const createEmptyForm = () => ({
@@ -312,6 +313,12 @@
             return cursorContext(content, sel?.start)
           },
           getTitle: () => this.form.title || '',
+          fillTitle: (title, expectedTitle) => {
+            const message = titleFillError(title, expectedTitle, this.form.title || '')
+            if (message) return { ok: false, message }
+            this.form.title = title.trim()
+            return { ok: true }
+          },
           fillDescription: (text) => {
             if (!text) return false
             this.form.description = text

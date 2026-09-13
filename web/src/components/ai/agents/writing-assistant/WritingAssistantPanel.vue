@@ -20,6 +20,23 @@
         </el-button>
       </div>
 
+      <details class="writing-preferences">
+        <summary>正文生成偏好</summary>
+        <div class="preference-fields">
+          <el-select v-model="tone" size="small" aria-label="写作语气" :disabled="streaming || editorDiffOpen">
+            <el-option label="自然文风" value="natural" />
+            <el-option label="正式严谨" value="formal" />
+            <el-option label="亲切易懂" value="friendly" />
+          </el-select>
+          <el-select v-model="outputLength" size="small" aria-label="篇幅偏好" :disabled="streaming || editorDiffOpen">
+            <el-option label="保持篇幅" value="original" />
+            <el-option label="适度精简" value="shorter" />
+            <el-option label="适度扩写" value="longer" />
+          </el-select>
+        </div>
+        <small>适用于润色、改写、续写与自定义指令。</small>
+      </details>
+
       <!-- 自定义指令 -->
       <div class="custom-input">
         <el-input
@@ -41,7 +58,7 @@
       </div>
 
       <!-- 结果区 -->
-      <div v-if="streaming || resultText || editorDiffOpen" class="result-area">
+      <div v-if="streaming || resultText || editorDiffOpen || lastTask" class="result-area">
         <div class="result-header">
           <span class="result-title">{{ resultTitle }}</span>
           <el-button
@@ -55,6 +72,11 @@
           </el-button>
         </div>
 
+        <div v-if="lastTask && !streaming && !editorDiffOpen" class="retry-row">
+          <span>{{ taskStatus || '沿用上次输入与偏好' }}</span>
+          <el-button size="small" @click="retryLastTask">重新生成</el-button>
+          <el-button v-if="!resultText" size="small" @click="reset">丢弃</el-button>
+        </div>
         <div v-if="contextNotice" class="context-notice" role="status">{{ contextNotice }}</div>
 
         <!-- 润色/改写完成：diff 已铺在正文编辑器中 -->
@@ -67,7 +89,13 @@
 
         <!-- 普通结果模式 -->
         <template v-else>
-          <div v-if="resultText" class="result-body" v-html="renderedResult" />
+          <div v-if="currentAction === 'title' && resultReady && titleCandidates.length" class="title-candidates">
+            <div v-for="(title, index) in titleCandidates" :key="title" class="title-candidate">
+              <span>{{ index + 1 }}. {{ title }}</span>
+              <el-button size="small" :disabled="!hasEditor" @click="applyTitle(title)">采用标题</el-button>
+            </div>
+          </div>
+          <div v-else-if="resultText" class="result-body" v-html="renderedResult" />
           <div v-else-if="streaming" class="streaming-hint">
             {{ streamingHint }}<span class="cursor">▌</span>
           </div>
@@ -103,18 +131,20 @@
       <!-- 历史轮次 -->
       <div v-if="history.length" class="history-bar">
         <span>对话上下文 {{ Math.floor(history.length / 2) }} 轮</span>
-        <el-button link size="small" @click="history = []">清空</el-button>
+        <el-button link size="small" :disabled="streaming" @click="clearHistory">清空</el-button>
       </div>
     </template>
   </div>
 </template>
 
 <script setup>
-  import { computed, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
   import { renderSafeMarkdown } from '@/utils/safeMarkdown'
   import { ElMessage } from 'element-plus'
   import { useAiStore } from '@/pinia/modules/ai'
   import { streamAiChat, getAiStatus, generateSummary, suggestTags } from '@/api/blog/ai'
+
+  import { parseTitleCandidates, createWritingTask, retryTaskError } from './writingTask.js'
 
   const aiStore = useAiStore()
 
@@ -137,6 +167,12 @@
   const selectedTags = ref([])
   const selectedNewTags = ref([])
   const includeCategory = ref(true)
+  const tone = ref('natural')
+  const outputLength = ref('original')
+  const lastTask = shallowRef(null)
+  const resultSnapshot = shallowRef(null)
+  const taskStatus = ref('')
+  const titleCandidates = computed(() => parseTitleCandidates(resultText.value))
 
   const editorCtx = computed(() => aiStore.contexts.editor)
   const hasEditor = computed(() => Boolean(editorCtx.value))
@@ -229,7 +265,7 @@
     },
     {
       key: 'title', label: '起标题',
-      disabled: computed(() => !hasContent.value),
+      disabled: computed(() => !hasContent.value && !editorCtx.value?.getTitle?.()),
       hint: '请先输入正文或标题'
     },
     {
@@ -255,6 +291,9 @@
     }
     if (currentAction.value === 'suggest-tags') {
       actions.push({ key: 'apply', label: '回填标签', handler: applyTags })
+    }
+    if (currentAction.value === 'custom' && resultSnapshot.value) {
+      actions.push({ key: 'compare', label: '与原选区对比', handler: compareCustomResult })
     }
     if (hasEditor.value && (currentAction.value === 'continue' || currentAction.value === 'outline')) {
       actions.push({ key: 'insert', label: '插入到光标处', handler: insertResult })
@@ -283,6 +322,8 @@
     const editor = editorCtx.value
     const payload = {
       action,
+      tone: tone.value,
+      length: outputLength.value,
       title: editor?.getTitle?.() || '',
       content: editor?.getFullText?.() || '',
       ...extra
@@ -319,13 +360,16 @@
     resultText.value = ''
     resultTitle.value = 'AI 结果'
     streamingHint.value = '正在思考'
-    await startStream(buildPayload('custom', { instruction: instruction.value.trim() }))
+    await startStream(buildPayload('custom', { instruction: instruction.value.trim() }), editorCtx.value?.captureSelection?.() || null, false)
   }
 
   const runSummary = () => runSingle('summary', generateSummary)
   const runSuggestTags = () => runSingle('suggest-tags', suggestTags)
 
-  const runSingle = async (action, request) => {
+  const runSingle = async (action, request, retryTask = null) => {
+    const task = retryTask || createWritingTask(buildPayload(action), null, editorCtx.value)
+    lastTask.value = task
+    resultSnapshot.value = null
     const handle = new AbortController()
     beginTask(handle)
     currentAction.value = action
@@ -333,7 +377,7 @@
     resultTitle.value = action === 'summary' ? '文章摘要' : '分类与标签建议'
     streamingHint.value = '正在思考'
     try {
-      const res = await request(buildPayload(action), handle.signal)
+      const res = await request(task.payload, handle.signal)
       if (streamHandle !== handle) return
       contextNotice.value = res.data?.context?.notice || ''
       if (action === 'summary') {
@@ -358,7 +402,10 @@
       }
       resultReady.value = true
     } catch (error) {
-      if (streamHandle === handle && !handle.signal.aborted) ElMessage.error(error?.response?.data?.msg || error?.message || 'AI 请求失败')
+      if (streamHandle === handle && !handle.signal.aborted) {
+        taskStatus.value = '生成失败，可重新生成'
+        ElMessage.error(error?.response?.data?.msg || error?.message || 'AI 请求失败')
+      }
     } finally {
       if (streamHandle === handle) {
         streaming.value = false
@@ -370,7 +417,7 @@
   const captureOwner = () => {
     const context = editorCtx.value
     const state = context?.getEditorState?.()
-    return { context, editorId: state?.editorId, documentId: state?.documentId }
+    return { context, editorId: state?.editorId, documentId: state?.documentId, title: context?.getTitle?.() || '' }
   }
   const ownsResult = () => {
     const owner = captureOwner()
@@ -380,6 +427,7 @@
   const beginTask = (handle) => {
     streamHandle?.abort()
     streamHandle = handle
+    taskStatus.value = ''
     resultReady.value = false
     tagSuggestion.value = null
     contextNotice.value = ''
@@ -389,13 +437,17 @@
     streaming.value = true
   }
 
-  const startStream = (payload, snapshot = null) => {
+  const startStream = (payload, snapshot = null, autoDiff = true, retryTask = null) => {
+    streamingHint.value = '正在思考'
+    const task = retryTask || createWritingTask(payload, snapshot, editorCtx.value, history.value.slice(-6), autoDiff)
+    lastTask.value = task
+    resultSnapshot.value = snapshot
     resultReady.value = false
     const userContent = payload.instruction || payload.selection || payload.content || ''
     let generatedText = ''
     let completed = false
     const handle = streamAiChat(
-      { ...payload, history: history.value.slice(-6) },
+      task.payload,
       {
         onDelta: (delta) => {
           if (streamHandle !== handle) return
@@ -413,6 +465,7 @@
         },
         onError: (message) => {
           if (streamHandle !== handle) return
+          taskStatus.value = '生成失败，可重新生成'
           ElMessage.error(message)
         },
         onDone: () => {
@@ -427,19 +480,22 @@
       streaming.value = false
       streamHandle = null
       if (aborted || errorMessage) return
-      if (!generatedText.trim()) return ElMessage.warning('AI 未返回有效内容，请重新生成')
+      if (!generatedText.trim()) {
+        taskStatus.value = '未返回有效内容，请重新生成'
+        return ElMessage.warning(taskStatus.value)
+      }
       // 不完整的输出不能进入正文替换流程。
       if (!completed) return ElMessage.warning('生成未完整结束，已保留结果供复制，请重新生成后再应用')
 
       resultReady.value = true
-      history.value.push(
+      history.value = [...task.payload.history,
         { role: 'user', content: userContent.slice(0, 2000) },
         { role: 'assistant', content: generatedText.slice(0, 2000) }
-      )
+      ]
       if (history.value.length > 6) history.value = history.value.slice(-6)
 
       // 润色/改写且原文来自选区 → diff 直接铺在正文编辑器中
-      if (snapshot) {
+      if (snapshot && autoDiff) {
         const result = aiStore.openEditorDiff(snapshot, generatedText)
         if (!result.ok) ElMessage.warning(result.message)
       }
@@ -450,11 +506,44 @@
     const handle = streamHandle
     streamHandle = null
     handle?.abort()
+    if (handle) taskStatus.value = '已停止，部分内容仅供复制'
     resultReady.value = false
     streaming.value = false
   }
 
+  const retryLastTask = () => {
+    if (streaming.value || editorDiffOpen.value) return
+    const task = lastTask.value
+    const message = retryTaskError(task, editorCtx.value)
+    if (message) return ElMessage.warning(message)
+    resultText.value = ''
+    if (task.payload.action === 'summary') return runSingle('summary', generateSummary, task)
+    if (task.payload.action === 'suggest-tags') return runSingle('suggest-tags', suggestTags, task)
+    return startStream(task.payload, task.snapshot, task.autoDiff, task)
+  }
+
+  const clearHistory = () => {
+    if (streaming.value) return
+    history.value = []
+    // 清空会话后不再重放带有旧历史的请求。
+    lastTask.value = null
+  }
+
   // ---- 结果操作 ----
+  const applyTitle = (title) => {
+    if (!resultReady.value || !ownsResult() || !titleCandidates.value.includes(title)) return
+    const result = editorCtx.value?.fillTitle?.(title, resultOwner.title)
+    if (!result?.ok) return ElMessage.warning(result?.message || '当前页面不支持回填标题，请复制使用')
+    ElMessage.success('已回填文章标题')
+    reset()
+  }
+
+  const compareCustomResult = () => {
+    if (!resultReady.value || !ownsResult() || !resultSnapshot.value) return
+    const result = aiStore.openEditorDiff(resultSnapshot.value, resultText.value)
+    if (!result.ok) ElMessage.warning(result.message)
+  }
+
   const insertResult = () => {
     if (!resultReady.value || !ownsResult()) return
     if (!editorCtx.value?.insertAtCursor?.(resultText.value)) return ElMessage.warning('当前编辑器无法插入，请手动复制')
@@ -508,6 +597,9 @@
   const reset = () => {
     abortStream()
     resultOwner = null
+    lastTask.value = null
+    resultSnapshot.value = null
+    taskStatus.value = ''
     contextNotice.value = ''
     if (editorDiffOpen.value) {
       aiStore.closeEditorDiff()
@@ -524,6 +616,8 @@
       reset()
       history.value = []
       instruction.value = ''
+      tone.value = 'natural'
+      outputLength.value = 'original'
       syncSelection()
     },
     { flush: 'sync' }
@@ -567,6 +661,25 @@
     margin: 0;
   }
 }
+
+.writing-preferences {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  summary { cursor: pointer; padding: 4px 0; }
+  .preference-fields { display: flex; gap: 8px; margin: 8px 0; }
+  .el-select { flex: 1; min-width: 0; }
+}
+.retry-row, .title-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 8px;
+  span { overflow-wrap: anywhere; }
+}
+.title-candidates { overflow: auto; min-height: 0; }
+.title-candidate { padding: 10px; background: var(--el-fill-color-blank); border: 1px solid var(--el-border-color-light); border-radius: 4px; }
 
 .custom-input {
   display: flex;

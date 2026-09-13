@@ -10,6 +10,12 @@ func ValidateAiChatRequest(req *AiChatRequest) error { return validateAiChatRequ
 
 // 字符限制在构建提示词之前执行，HTTP 层另有 2 MiB 请求体限制。
 func ValidateAiRequestSize(req *AiChatRequest) error {
+	if _, ok := aiTones[req.Tone]; !ok {
+		return fmt.Errorf("不支持的写作语气")
+	}
+	if _, ok := aiLengths[req.Length]; !ok {
+		return fmt.Errorf("不支持的篇幅偏好")
+	}
 	if req.CursorOffset != nil && (*req.CursorOffset < 0 || *req.CursorOffset > len(utf16.Encode([]rune(req.Content)))) {
 		return fmt.Errorf("光标位置无效")
 	}

@@ -14,12 +14,14 @@
   import { useAiStore } from '../../src/pinia/modules/ai.js'
   import { renderSafeMarkdown } from '../../src/utils/safeMarkdown.js'
   import { buildSuggestionPatch, cursorContext } from '../../src/components/ai/agents/writing-assistant/suggestion.js'
+  import { titleFillError } from '../../src/components/ai/agents/writing-assistant/writingTask.js'
 
   const editor = ref()
   const showModelConfig = new URLSearchParams(window.location.search).has('models')
   const content = ref('前文\n\n选中内容\n\n后文')
   const documentId = ref('article-a')
   const description = ref('原摘要')
+  const title = ref('回归测试文章')
   const suggestion = ref(null)
   const metadataForm = ref({ cate: 9, tagList: [3] })
   const store = useAiStore()
@@ -40,13 +42,21 @@
         if (result.ok) { suggestion.value = value; Object.assign(metadataForm.value, result.patch) }
         return result
       },
-      getTitle: () => '回归测试文章'
+      getTitle: () => title.value,
+      fillTitle: (value, expected) => {
+        const message = titleFillError(value, expected, title.value)
+        if (message) return { ok: false, message }
+        title.value = value
+        return { ok: true }
+      }
     })
     window.aiEditorTest = {
       getContent: () => content.value,
       setContent: async (text) => { content.value = text; await nextTick() },
       changeDocument: async () => { documentId.value = 'article-b'; await nextTick() },
       getDescription: () => description.value,
+      getTitle: () => title.value,
+      setTitle: (value) => { title.value = value },
       getSuggestion: () => suggestion.value,
       getMetadataForm: () => metadataForm.value,
       leaveEditor: () => store.unregisterContext('editor'),
