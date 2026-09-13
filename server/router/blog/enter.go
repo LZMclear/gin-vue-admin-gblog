@@ -22,6 +22,7 @@ type RouterGroup struct {
 	TelegramRouter
 	AuthRouter
 	DocsRouter
+	AiRouter
 }
 
 var (
@@ -44,4 +45,5 @@ var (
 	telegramApi     = api.ApiGroupApp.BlogApiGroup.TelegramApi
 	authApi         = api.ApiGroupApp.BlogApiGroup.AuthApi
 	docsApi         = api.ApiGroupApp.BlogApiGroup.DocsApi
+	aiApi           = api.ApiGroupApp.BlogApiGroup.AiApi
 )

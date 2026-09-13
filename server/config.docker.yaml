@@ -280,3 +280,15 @@ mcp:
     version: v1.0.0
     addr: 8889
     separate: false
+
+# ai
+ai:
+    enable: true
+    provider: openai
+    base-url: ""
+    api-key: ""
+    model: ""
+    temperature: 0.7
+    max-tokens: 4096
+    context-limit: 8000
+    daily-limit: 200

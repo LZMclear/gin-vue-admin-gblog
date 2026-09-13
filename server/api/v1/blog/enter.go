@@ -22,6 +22,7 @@ type ApiGroup struct {
 	TelegramApi     TelegramApi
 	AuthApi         AuthApi
 	DocsApi         DocsApi
+	AiApi           AiApi
 }
 
 var (
@@ -44,4 +45,5 @@ var (
 	telegramService     = service.ServiceGroupApp.BlogServiceGroup.TelegramService
 	authService         = service.ServiceGroupApp.BlogServiceGroup.AuthService
 	docsService         = service.ServiceGroupApp.BlogServiceGroup.DocsService
+	aiService           = service.ServiceGroupApp.BlogServiceGroup.AiService
 )

@@ -50,8 +50,10 @@
             <el-form-item prop="content">
               <MarkdownEditor
                 ref="contentEditorRef"
+                :document-id="draftKey"
                 v-model="form.content"
                 height="680px"
+                enable-ai-diff
                 placeholder="从这里开始写作，支持标题、引用、列表、代码块、表格、图片和实时预览"
               />
             </el-form-item>
@@ -168,6 +170,9 @@
     updateBlog
   } from '@/api/blog/article'
   import MarkdownEditor from '@/components/blog/MarkdownEditor.vue'
+  import { useAiStore } from '@/pinia/modules/ai'
+  import { titleFillError } from '@/components/ai/agents/writing-assistant/writingTask.js'
+  import { buildSuggestionPatch, cursorContext } from '@/components/ai/agents/writing-assistant/suggestion.js'
 
   const createEmptyForm = () => ({
     title: '',
@@ -274,7 +279,58 @@
         this.restoreDraft()
       }
     },
+    mounted() {
+      this.registerAiEditor()
+    },
+    activated() {
+      this.registerAiEditor()
+    },
+    deactivated() {
+      this.aiStore?.unregisterContext?.('editor', this.aiEditorContext)
+    },
+    beforeUnmount() {
+      this.aiStore?.unregisterContext?.('editor', this.aiEditorContext)
+    },
     methods: {
+      registerAiEditor() {
+        this.aiStore = useAiStore()
+        this.aiEditorContext ||= this.buildEditorContext()
+        this.aiStore.registerContext('editor', this.aiEditorContext)
+      },
+      buildEditorContext() {
+        return {
+          getEditorState: () => this.$refs.contentEditorRef?.getEditorState?.(),
+          captureSelection: () => this.$refs.contentEditorRef?.captureSelection?.(),
+          applySelectionSnapshot: (snapshot, text) => this.$refs.contentEditorRef?.applySelectionSnapshot?.(snapshot, text),
+          getSelection: () =>
+            this.$refs.contentEditorRef?.getSelection?.() || { text: '', start: 0, end: 0 },
+          replaceSelection: (text) => this.$refs.contentEditorRef?.replaceSelection?.(text),
+          insertAtCursor: (text) => this.$refs.contentEditorRef?.insertAtCursor?.(text),
+          getFullText: () => this.form.content || '',
+          getCursorContext: () => {
+            const sel = this.$refs.contentEditorRef?.getSelection?.()
+            const content = this.form.content || ''
+            return cursorContext(content, sel?.start)
+          },
+          getTitle: () => this.form.title || '',
+          fillTitle: (title, expectedTitle) => {
+            const message = titleFillError(title, expectedTitle, this.form.title || '')
+            if (message) return { ok: false, message }
+            this.form.title = title.trim()
+            return { ok: true }
+          },
+          fillDescription: (text) => {
+            if (!text) return false
+            this.form.description = text
+            return true
+          },
+          applySuggestion: (suggestion) => {
+            const result = buildSuggestionPatch(this.form, suggestion, this.categoryList, this.tagList)
+            if (result.ok) Object.assign(this.form, result.patch)
+            return result
+          }
+        }
+      },
       getData() {
         getCategoryAndTag().then(res => {
           this.categoryList = res.data.categories
@@ -466,9 +522,6 @@
 }
 
 .writer-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -590,7 +643,6 @@
   }
 
   .writer-header {
-    position: static;
     align-items: flex-start;
     flex-direction: column;
   }

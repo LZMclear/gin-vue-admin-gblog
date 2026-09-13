@@ -179,6 +179,10 @@ service.interceptors.response.use(
       return response.data
     }
 
+    if (response.config.silentError) {
+      return Promise.reject(Object.assign(new Error(response.data.msg || '请求失败'), { response }))
+    }
+
     ElMessage({
       showClose: true,
       message: response.data.msg || decodeURI(response.headers.msg),
@@ -191,6 +195,8 @@ service.interceptors.response.use(
     if (!error.config?.donNotShowLoading) {
       closeLoading(error.config?.loadingOption)
     }
+
+    if (axios.isCancel(error) || error.config?.silentError) return Promise.reject(error)
 
     if (!error.response) {
       resetLoading()

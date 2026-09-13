@@ -1,5 +1,6 @@
 {
   "/src/view/about/index.vue": "About",
+  "/src/view/ai/modelConfig/modelConfig.vue": "ModelConfig",
   "/src/view/blog/blog/BlogList.vue": "BlogList",
   "/src/view/blog/blog/WriteBlog.vue": "WriteBlog",
   "/src/view/blog/category/CategoryList.vue": "CategoryList",
