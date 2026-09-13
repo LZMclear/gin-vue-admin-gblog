@@ -52,6 +52,7 @@
                 ref="contentEditorRef"
                 v-model="form.content"
                 height="680px"
+                enable-ai-diff
                 placeholder="从这里开始写作，支持标题、引用、列表、代码块、表格、图片和实时预览"
               />
             </el-form-item>
@@ -282,6 +283,8 @@
     },
     beforeUnmount() {
       this.aiStore?.unregisterContext?.('editor')
+      // 离开页面时丢弃未应用的编辑器 diff，避免残留状态影响下次进入
+      this.aiStore?.closeEditorDiff?.()
     },
     methods: {
       buildEditorContext() {

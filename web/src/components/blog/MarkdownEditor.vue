@@ -29,8 +29,19 @@
       </div>
     </div>
 
+    <div v-if="aiDiffActive" class="ai-diff-banner">
+      <span class="ai-diff-tip">AI 润色对比中：在下方逐块选择「采用 AI 版 / 保留原文」，右侧预览采纳后的效果</span>
+      <div class="ai-diff-actions">
+        <el-button type="primary" size="small" @click="applyAiDiff">应用修改</el-button>
+        <el-button size="small" @click="cancelAiDiff">取消</el-button>
+      </div>
+    </div>
+
     <div class="markdown-body" :style="{ minHeight: editorHeight }">
-      <div class="editor-pane" :class="{ 'is-alone': !previewVisible }">
+      <div v-if="aiDiffActive" class="editor-pane diff-pane">
+        <ParagraphDiff :blocks="aiStore.diff.blocks" />
+      </div>
+      <div v-else class="editor-pane" :class="{ 'is-alone': !previewVisible }">
         <textarea
           ref="textareaRef"
           v-model="value"
@@ -40,8 +51,9 @@
           @keydown.tab.prevent="insertText('  ', '', '')"
         />
       </div>
-      <div v-if="previewVisible" class="preview-pane">
-        <div v-if="value" class="markdown-preview" v-html="previewHtml" />
+      <div v-if="previewVisible || aiDiffActive" class="preview-pane">
+        <div v-if="aiDiffActive" class="markdown-preview" v-html="mergedPreviewHtml" />
+        <div v-else-if="value" class="markdown-preview" v-html="previewHtml" />
         <div v-else class="preview-empty">Markdown 预览</div>
       </div>
     </div>
@@ -73,6 +85,8 @@
     View
   } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
+  import { useAiStore } from '@/pinia/modules/ai'
+  import ParagraphDiff from '@/components/ai/agents/writing-assistant/ParagraphDiff.vue'
 
   const props = defineProps({
     modelValue: {
@@ -86,10 +100,31 @@
     height: {
       type: [Number, String],
       default: 520
+    },
+    // 开启后，AI 润色/改写完成的 diff 会直接铺在本编辑器中（仅正文编辑器开启）
+    enableAiDiff: {
+      type: Boolean,
+      default: false
     }
   })
 
   const emit = defineEmits(['update:modelValue'])
+
+  const aiStore = useAiStore()
+
+  // 本编辑器实例是否处于 AI diff 模式
+  const aiDiffActive = computed(() => props.enableAiDiff && aiStore.diff.active)
+  const mergedPreviewHtml = computed(() => marked.parse(aiStore.mergedDiffText || ''))
+
+  const applyAiDiff = () => {
+    if (aiStore.applyEditorDiff({ replaceSelection })) {
+      ElMessage.success('已应用 AI 修改')
+    }
+  }
+
+  const cancelAiDiff = () => {
+    aiStore.closeEditorDiff()
+  }
 
   const textareaRef = ref()
   const previewVisible = ref(true)
@@ -280,6 +315,29 @@
 
 .markdown-toolbar {
   border-bottom: 1px solid #ebeef5;
+}
+
+.ai-diff-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3d19e;
+  background: #fdf6ec;
+  color: #b88230;
+  font-size: 13px;
+
+  .ai-diff-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.diff-pane {
+  overflow: auto;
+  padding: 10px;
+  background: #fafbfc;
 }
 
 .markdown-footer {

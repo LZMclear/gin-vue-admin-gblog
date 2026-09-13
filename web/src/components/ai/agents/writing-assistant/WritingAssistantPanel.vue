@@ -41,7 +41,7 @@
       </div>
 
       <!-- 结果区 -->
-      <div v-if="streaming || resultText || diffBlocks.length" class="result-area">
+      <div v-if="streaming || resultText || editorDiffOpen" class="result-area">
         <div class="result-header">
           <span class="result-title">{{ resultTitle }}</span>
           <el-button
@@ -55,16 +55,13 @@
           </el-button>
         </div>
 
-        <!-- diff 模式 -->
-        <template v-if="mode === 'diff'">
-          <ParagraphDiff :blocks="diffBlocks" @change="refreshDiffStats" />
-          <div class="result-actions">
-            <el-button type="primary" size="small" @click="applyDiff">
-              应用修改
-            </el-button>
-            <el-button size="small" @click="reset">丢弃</el-button>
+        <!-- 润色/改写完成：diff 已铺在正文编辑器中 -->
+        <div v-if="editorDiffOpen" class="editor-diff-notice">
+          <div>已在正文编辑器中打开 diff 对比：逐块选择「采用 AI 版 / 保留原文」，右侧预览可实时查看采纳效果。</div>
+          <div class="notice-actions">
+            <el-button size="small" @click="discardEditorDiff">放弃对比</el-button>
           </div>
-        </template>
+        </div>
 
         <!-- 普通结果模式 -->
         <template v-else>
@@ -105,8 +102,6 @@
   import { ElMessage } from 'element-plus'
   import { useAiStore } from '@/pinia/modules/ai'
   import { streamAiChat, getAiStatus, generateSummary, suggestTags } from '@/api/blog/ai'
-  import ParagraphDiff from './ParagraphDiff.vue'
-  import { diffMarkdownBlocks, applyDiffBlocks } from './diff'
 
   const aiStore = useAiStore()
 
@@ -125,12 +120,11 @@
   const aiEnabled = ref(true)
   const disabledReason = ref('')
   const streaming = ref(false)
-  const mode = ref('idle') // idle | result | diff
   const instruction = ref('')
   const resultText = ref('')
   const resultTitle = ref('')
   const streamingHint = ref('')
-  const diffBlocks = ref([])
+  const editorDiffOpen = ref(false) // 润色/改写完成后 diff 是否已铺在编辑器中
   const history = ref([])
   let currentAction = null
   let currentSource = '' // 润色/改写的原始选区
@@ -286,9 +280,8 @@
     const selection = editorCtx.value?.getSelection?.()
     currentSource = selection?.text || ''
     currentAction = action
-    mode.value = 'result'
+    editorDiffOpen.value = false
     resultText.value = ''
-    diffBlocks.value = []
     resultTitle.value = {
       polish: '润色结果', rewrite: '改写结果', continue: '续写结果',
       outline: '生成大纲', title: '标题建议', custom: 'AI 结果'
@@ -300,9 +293,8 @@
   const runCustom = async () => {
     if (!instruction.value.trim()) return
     currentAction = 'custom'
-    mode.value = 'result'
+    editorDiffOpen.value = false
     resultText.value = ''
-    diffBlocks.value = []
     resultTitle.value = 'AI 结果'
     streamingHint.value = '正在思考'
     await startStream(buildPayload('custom', { instruction: instruction.value.trim() }))
@@ -310,9 +302,8 @@
 
   const runSummary = async () => {
     currentAction = 'summary'
-    mode.value = 'result'
+    editorDiffOpen.value = false
     resultText.value = ''
-    diffBlocks.value = []
     resultTitle.value = '文章摘要'
     streaming.value = true
     try {
@@ -327,9 +318,8 @@
 
   const runSuggestTags = async () => {
     currentAction = 'suggest-tags'
-    mode.value = 'result'
+    editorDiffOpen.value = false
     resultText.value = ''
-    diffBlocks.value = []
     resultTitle.value = '分类与标签建议'
     streaming.value = true
     try {
@@ -382,10 +372,10 @@
       )
       if (history.value.length > 6) history.value = history.value.slice(-6)
 
-      // 润色/改写且原文来自选区 → 进入 diff 模式
+      // 润色/改写且原文来自选区 → diff 直接铺在正文编辑器中
       if ((payload.action === 'polish' || payload.action === 'rewrite') && currentSource) {
-        diffBlocks.value = diffMarkdownBlocks(currentSource, resultText.value)
-        mode.value = 'diff'
+        aiStore.openEditorDiff(currentSource, resultText.value)
+        editorDiffOpen.value = true
       }
     })
   }
@@ -422,14 +412,8 @@
     }
   }
 
-  const refreshDiffStats = () => {
-    /* ParagraphDiff 内部自行统计，这里仅作为 change 钩子 */
-  }
-
-  const applyDiff = () => {
-    const finalText = applyDiffBlocks(diffBlocks.value)
-    editorCtx.value?.replaceSelection?.(finalText)
-    ElMessage.success('已应用修改')
+  const discardEditorDiff = () => {
+    aiStore.closeEditorDiff()
     reset()
   }
 
@@ -443,9 +427,11 @@
   }
 
   const reset = () => {
-    mode.value = 'idle'
+    if (editorDiffOpen.value) {
+      aiStore.closeEditorDiff()
+      editorDiffOpen.value = false
+    }
     resultText.value = ''
-    diffBlocks.value = []
     currentAction = null
     currentSource = ''
     tagSuggestion.value = null
@@ -554,6 +540,22 @@
 
   .cursor {
     animation: blink 1s infinite;
+  }
+}
+
+.editor-diff-notice {
+  padding: 10px 12px;
+  border: 1px solid #f3d19e;
+  border-radius: 6px;
+  background: #fdf6ec;
+  color: #b88230;
+  font-size: 13px;
+  line-height: 1.7;
+
+  .notice-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
   }
 }
 
