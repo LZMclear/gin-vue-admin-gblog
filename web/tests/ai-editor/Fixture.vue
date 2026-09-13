@@ -2,7 +2,8 @@
   <ModelConfig v-if="showModelConfig" />
   <div v-else class="fixture">
     <MarkdownEditor ref="editor" v-model="content" :document-id="documentId" enable-ai-diff />
-    <WritingAssistantPanel />
+    <AiDock v-if="selectionFixture" />
+    <WritingAssistantPanel v-else />
   </div>
 </template>
 
@@ -10,6 +11,7 @@
   import { nextTick, onMounted, ref } from 'vue'
   import MarkdownEditor from '../../src/components/blog/MarkdownEditor.vue'
   import WritingAssistantPanel from '../../src/components/ai/agents/writing-assistant/WritingAssistantPanel.vue'
+  import AiDock from '../../src/components/ai/AiDock.vue'
   import ModelConfig from '../../src/view/ai/modelConfig/modelConfig.vue'
   import { useAiStore } from '../../src/pinia/modules/ai.js'
   import { renderSafeMarkdown } from '../../src/utils/safeMarkdown.js'
@@ -18,6 +20,7 @@
 
   const editor = ref()
   const showModelConfig = new URLSearchParams(window.location.search).has('models')
+  const selectionFixture = new URLSearchParams(window.location.search).has('selection')
   const content = ref('前文\n\n选中内容\n\n后文')
   const documentId = ref('article-a')
   const description = ref('原摘要')

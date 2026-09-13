@@ -69,6 +69,7 @@
       <span>{{ stats.words }} 字</span>
       <span>{{ stats.lines }} 行</span>
     </div>
+    <SelectionAiToolbar :textarea="textareaRef" :enabled="selectionAiEnabled" @action="requestSelectionAi" />
   </div>
 </template>
 
@@ -92,6 +93,7 @@
   import { ElMessage } from 'element-plus'
   import { useAiStore } from '@/pinia/modules/ai'
   import ParagraphDiff from '@/components/ai/agents/writing-assistant/ParagraphDiff.vue'
+  import SelectionAiToolbar from './SelectionAiToolbar.vue'
 
   const props = defineProps({
     modelValue: {
@@ -181,6 +183,14 @@
     content: value.value, active: active.value
   })
   const captureSelection = () => captureEditorSnapshot(getEditorState(), getSelection())
+  const selectionAiEnabled = computed(() => props.enableAiDiff && active.value && !aiStore.diff.active &&
+    !aiStore.writingBusy && !aiStore.selectionAction &&
+    aiStore.contexts.editor?.getEditorState?.()?.editorId === editorId)
+  const requestSelectionAi = (action) => {
+    const result = aiStore.requestSelectionAction(action, captureSelection())
+    if (!result.ok) ElMessage.warning(result.message)
+    else fullscreen.value = false
+  }
   const restoreSelection = (start, end) => nextTick(() => {
     textareaRef.value?.focus()
     textareaRef.value?.setSelectionRange(

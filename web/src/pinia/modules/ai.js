@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, markRaw, reactive, ref } from 'vue'
+import { computed, markRaw, reactive, ref, shallowRef } from 'vue'
 import { diffMarkdownBlocks, applyDiffBlocks } from '../../components/ai/agents/writing-assistant/diff.js'
 import { snapshotError, replaceSnapshotRange } from '../../components/blog/editorSnapshot.js'
 
@@ -11,6 +11,17 @@ import { snapshotError, replaceSnapshotRange } from '../../components/blog/edito
  */
 export const useAiStore = defineStore('ai', () => {
   const contexts = reactive({})
+  const selectionAction = shallowRef(null)
+  const writingBusy = ref(false)
+  const requestSelectionAction = (action, snapshot) => {
+    if (!['polish', 'rewrite'].includes(action)) return { ok: false, message: '不支持的选区操作' }
+    const message = snapshotError(snapshot, contexts.editor?.getEditorState?.())
+    if (message) return { ok: false, message }
+    if (writingBusy.value || selectionAction.value || diff.active) return { ok: false, message: '请先完成当前 AI 任务或对比' }
+    selectionAction.value = { action, snapshot }
+    openDock('writing-assistant')
+    return { ok: true }
+  }
 
   // AiDock 抽屉开关
   const dockVisible = ref(false)
@@ -62,11 +73,13 @@ export const useAiStore = defineStore('ai', () => {
   }
 
   const registerContext = (name, handle) => {
+    if (name === 'editor' && contexts[name] !== handle) selectionAction.value = null
     contexts[name] = markRaw(handle)
   }
 
   const unregisterContext = (name, handle) => {
     if (handle && contexts[name] !== handle) return
+    if (name === 'editor') selectionAction.value = null
     if (name === 'editor' && diff.snapshot?.editorId === contexts[name]?.getEditorState?.()?.editorId) {
       closeEditorDiff()
     }
@@ -86,6 +99,9 @@ export const useAiStore = defineStore('ai', () => {
 
   return {
     contexts,
+    selectionAction,
+    writingBusy,
+    requestSelectionAction,
     dockVisible,
     activeAgentId,
     diff,

@@ -145,6 +145,7 @@
   import { streamAiChat, getAiStatus, generateSummary, suggestTags } from '@/api/blog/ai'
 
   import { parseTitleCandidates, createWritingTask, retryTaskError } from './writingTask.js'
+  import { snapshotError } from '@/components/blog/editorSnapshot.js'
 
   const aiStore = useAiStore()
 
@@ -152,6 +153,8 @@
   const aiEnabled = ref(true)
   const disabledReason = ref('')
   const streaming = ref(false)
+  watch(streaming, value => { aiStore.writingBusy = value }, { flush: 'sync' })
+  let disposed = false
   const instruction = ref('')
   const resultText = ref('')
   const resultTitle = ref('')
@@ -188,6 +191,8 @@
   }
   document.addEventListener('selectionchange', syncSelection)
   onBeforeUnmount(() => {
+    disposed = true
+    aiStore.selectionAction = null
     document.removeEventListener('selectionchange', syncSelection)
     abortStream()
   })
@@ -201,8 +206,13 @@
     }
   })
 
+  let statusCheck = null
   checkStatus()
-  async function checkStatus() {
+  function checkStatus() {
+    if (!statusCheck) statusCheck = loadStatus().finally(() => { statusCheck = null })
+    return statusCheck
+  }
+  async function loadStatus() {
     disabledReason.value = ''
     try {
       const res = await getAiStatus()
@@ -335,10 +345,14 @@
     return payload
   }
 
-  const runChatAction = async (action) => {
+  const runChatAction = async (action, savedSnapshot = null) => {
     const needsSelection = action === 'polish' || action === 'rewrite'
-    const snapshot = needsSelection ? editorCtx.value?.captureSelection?.() : null
+    const snapshot = needsSelection ? savedSnapshot || editorCtx.value?.captureSelection?.() : null
     if (needsSelection && !snapshot) return ElMessage.warning('请先在当前文章中选择要修改的文本')
+    if (snapshot) {
+      const message = snapshotError(snapshot, editorCtx.value?.getEditorState?.())
+      if (message) return ElMessage.warning(message)
+    }
     currentAction.value = action
     resultText.value = ''
     resultTitle.value = {
@@ -613,6 +627,7 @@
     [() => editorCtx.value, () => editorCtx.value?.getEditorState?.()?.editorId,
       () => editorCtx.value?.getEditorState?.()?.documentId, () => editorCtx.value?.getEditorState?.()?.active],
     () => {
+      aiStore.selectionAction = null
       reset()
       history.value = []
       instruction.value = ''
@@ -622,6 +637,17 @@
     },
     { flush: 'sync' }
   )
+
+  // 抽屉按需挂载时也能接收入口保存的选区；等待期间保留请求以阻止重复点击。
+  watch(() => aiStore.selectionAction, async (request) => {
+    if (!request) return
+    await checkStatus()
+    if (disposed || aiStore.selectionAction !== request) return
+    aiStore.selectionAction = null
+    if (!aiEnabled.value) return
+    if (streaming.value || editorDiffOpen.value) return ElMessage.warning('请先完成当前 AI 任务或对比')
+    await runChatAction(request.action, request.snapshot)
+  }, { immediate: true })
 </script>
 
 <style scoped lang="scss">
